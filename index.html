@@ -648,7 +648,7 @@ async function doLogin() {
     user  = data.user;
     localStorage.setItem('rr_token', token);
     localStorage.setItem('rr_user', JSON.stringify(user));
-    window.location.reload();
+    initApp();
   } catch (e) {
     err.textContent = e.message;
     err.style.display = 'block';
@@ -668,7 +668,7 @@ function doLogout() {
 // ═══════════════════ INIT ═══════════════════
 window.addEventListener('DOMContentLoaded', () => {
   if (token && user) {
-    window.location.reload();
+    initApp();
   }
   const d = new Date();
   const days = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
@@ -1257,6 +1257,7 @@ function toast(type, icon, msg) {
 </script>
 </body>
 </html>
+
 
 
 
