@@ -1,0 +1,1260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ReviewReach — Practice Growth Platform</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=Sora:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --ink:      #0A0F1E;
+  --ink2:     #131929;
+  --ink3:     #1C2640;
+  --gold:     #C8922A;
+  --gold2:    #E8B84B;
+  --gold-dim: rgba(200,146,42,.12);
+  --teal:     #0B8B7C;
+  --teal2:    #0DADA0;
+  --teal-dim: rgba(11,139,124,.1);
+  --rose:     #C0374A;
+  --sky:      #1A6FC4;
+  --border:   rgba(255,255,255,.07);
+  --border2:  rgba(255,255,255,.13);
+  --text:     #E8E2D8;
+  --text2:    #9A95A0;
+  --text3:    #5A5668;
+  --serif:    'Playfair Display', Georgia, serif;
+  --sans:     'Sora', sans-serif;
+  --mono:     'IBM Plex Mono', monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+html,body{height:100%;overflow:hidden;}
+body{font-family:var(--sans);background:var(--ink);color:var(--text);font-size:13px;display:flex;flex-direction:column;}
+
+/* ── LOGIN SCREEN ── */
+.login-screen{
+  position:fixed;inset:0;background:var(--ink);
+  display:flex;align-items:center;justify-content:center;
+  z-index:999;
+}
+.login-box{
+  background:var(--ink2);border:1px solid var(--border2);
+  border-radius:16px;padding:48px;width:400px;
+  box-shadow:0 20px 80px rgba(0,0,0,.5);
+}
+.login-logo{
+  font-family:var(--serif);font-size:26px;font-weight:700;
+  color:var(--text);text-align:center;margin-bottom:8px;
+  display:flex;align-items:center;justify-content:center;gap:10px;
+}
+.login-logo-gem{
+  width:32px;height:32px;border-radius:7px;
+  background:linear-gradient(135deg,var(--gold),var(--gold2));
+  display:flex;align-items:center;justify-content:center;
+  font-size:16px;
+}
+.login-sub{text-align:center;font-size:12px;color:var(--text3);margin-bottom:32px;}
+.login-field{margin-bottom:16px;}
+.login-label{font-size:10px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--text3);margin-bottom:5px;display:block;}
+.login-input{
+  width:100%;background:var(--ink3);border:1px solid var(--border2);
+  border-radius:8px;color:var(--text);font-family:var(--sans);font-size:13px;
+  padding:10px 12px;outline:none;transition:border-color .15s;
+}
+.login-input:focus{border-color:rgba(200,146,42,.5);}
+.login-input::placeholder{color:var(--text3);}
+.login-btn{
+  width:100%;padding:12px;border-radius:8px;border:none;cursor:pointer;
+  background:linear-gradient(135deg,var(--gold),var(--gold2));
+  color:var(--ink);font-family:var(--sans);font-size:13px;font-weight:700;
+  margin-top:8px;transition:all .15s;
+}
+.login-btn:hover{transform:translateY(-1px);box-shadow:0 6px 20px rgba(200,146,42,.35);}
+.login-btn:disabled{opacity:.5;cursor:not-allowed;transform:none;}
+.login-error{color:#E07080;font-size:11px;text-align:center;margin-top:8px;}
+.login-demo{text-align:center;margin-top:16px;font-size:11px;color:var(--text3);}
+
+/* ── APP SHELL ── */
+.app{display:none;flex-direction:column;height:100vh;}
+.app.visible{display:flex;}
+
+/* ── TOPBAR ── */
+.topbar{
+  height:56px;background:var(--ink2);border-bottom:1px solid var(--border);
+  display:flex;align-items:center;padding:0 20px;flex-shrink:0;z-index:10;
+}
+.logo{
+  font-family:var(--serif);font-size:19px;font-weight:700;color:var(--text);
+  display:flex;align-items:center;gap:8px;margin-right:28px;
+}
+.logo-gem{
+  width:28px;height:28px;border-radius:6px;
+  background:linear-gradient(135deg,var(--gold),var(--gold2));
+  display:flex;align-items:center;justify-content:center;font-size:13px;
+}
+.top-nav{display:flex;height:100%;}
+.tn{
+  height:100%;display:flex;align-items:center;padding:0 16px;
+  font-size:12px;font-weight:500;color:var(--text3);cursor:pointer;
+  border-bottom:2px solid transparent;transition:all .15s;white-space:nowrap;
+  position:relative;
+}
+.tn:hover{color:var(--text2);}
+.tn.active{color:var(--text);border-bottom-color:var(--gold);}
+.tn-badge{
+  position:absolute;top:10px;right:6px;
+  min-width:16px;height:16px;border-radius:99px;
+  background:var(--gold);color:var(--ink);
+  font-size:9px;font-weight:700;font-family:var(--mono);
+  display:flex;align-items:center;justify-content:center;padding:0 3px;
+}
+.topbar-r{margin-left:auto;display:flex;align-items:center;gap:10px;}
+.api-pill{
+  display:flex;align-items:center;gap:6px;
+  background:var(--teal-dim);border:1px solid rgba(11,139,124,.25);
+  padding:5px 12px;border-radius:99px;
+  font-family:var(--mono);font-size:10px;color:var(--teal2);
+}
+.api-dot{width:6px;height:6px;border-radius:50%;background:var(--teal2);animation:blink 2s infinite;}
+.api-pill.disconnected{background:rgba(192,55,74,.1);border-color:rgba(192,55,74,.25);color:#E07080;}
+.api-pill.disconnected .api-dot{background:#E07080;animation:none;}
+@keyframes blink{0%,100%{opacity:1;}50%{opacity:.3;}}
+.user-pill{
+  display:flex;align-items:center;gap:8px;
+  background:rgba(255,255,255,.04);border:1px solid var(--border2);
+  padding:5px 12px;border-radius:99px;font-size:12px;color:var(--text2);
+}
+.user-ava{
+  width:20px;height:20px;border-radius:50%;
+  background:linear-gradient(135deg,var(--gold),var(--gold2));
+  font-family:var(--serif);font-size:9px;color:var(--ink);font-weight:700;
+  display:flex;align-items:center;justify-content:center;
+}
+.btn-logout{
+  font-size:11px;color:var(--text3);background:none;
+  border:1px solid var(--border);padding:5px 10px;border-radius:6px;
+  cursor:pointer;transition:all .15s;
+}
+.btn-logout:hover{color:var(--text);border-color:var(--border2);}
+
+/* ── LAYOUT ── */
+.shell{flex:1;display:flex;overflow:hidden;}
+
+/* ── SIDEBAR ── */
+.sidebar{
+  width:272px;flex-shrink:0;background:var(--ink2);
+  border-right:1px solid var(--border);display:flex;flex-direction:column;
+}
+.sb-head{padding:14px;flex-shrink:0;}
+.sb-date{font-family:var(--mono);font-size:10px;color:var(--text3);letter-spacing:.06em;text-transform:uppercase;margin-bottom:10px;}
+.sb-search{position:relative;}
+.sb-search input{
+  width:100%;background:var(--ink3);border:1px solid var(--border2);
+  border-radius:8px;color:var(--text);font-family:var(--sans);font-size:12px;
+  padding:8px 10px 8px 30px;outline:none;transition:border-color .15s;
+}
+.sb-search input:focus{border-color:rgba(200,146,42,.4);}
+.sb-search input::placeholder{color:var(--text3);}
+.sb-ic{position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--text3);font-size:12px;pointer-events:none;}
+.sb-sec{padding:8px 14px 4px;font-size:9px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);display:flex;align-items:center;justify-content:space-between;}
+.sb-cnt{background:var(--ink3);color:var(--text3);font-family:var(--mono);font-size:9px;padding:1px 6px;border-radius:3px;border:1px solid var(--border);}
+
+.pscroll{flex:1;overflow-y:auto;padding:4px 8px;}
+.pscroll::-webkit-scrollbar{width:3px;}
+.pscroll::-webkit-scrollbar-thumb{background:var(--ink3);border-radius:2px;}
+
+.pc{padding:10px;border-radius:8px;cursor:pointer;border:1px solid transparent;transition:all .12s;margin-bottom:2px;display:flex;gap:10px;align-items:flex-start;}
+.pc:hover{background:var(--ink3);border-color:var(--border);}
+.pc.sel{background:var(--ink3);border-color:rgba(200,146,42,.35);}
+.pc-ava{width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,var(--ink3),var(--ink));border:1px solid var(--border2);font-family:var(--serif);font-size:13px;color:var(--text2);display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.pc-body{flex:1;min-width:0;}
+.pc-name{font-size:12px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.pc-sub{font-size:10px;color:var(--text3);margin-top:1px;font-family:var(--mono);}
+.pc-tags{display:flex;gap:3px;margin-top:5px;flex-wrap:wrap;}
+.tag{font-size:9px;font-weight:600;padding:2px 6px;border-radius:3px;font-family:var(--mono);}
+.t-sent{background:rgba(11,139,124,.12);color:var(--teal2);border:1px solid rgba(11,139,124,.2);}
+.t-q{background:rgba(200,146,42,.1);color:var(--gold2);border:1px solid rgba(200,146,42,.2);}
+
+.sb-stats{border-top:1px solid var(--border);padding:12px 14px;display:grid;grid-template-columns:1fr 1fr;gap:6px;flex-shrink:0;}
+.sb-stat{background:var(--ink3);border:1px solid var(--border);border-radius:7px;padding:8px 10px;}
+.ssv{font-family:var(--serif);font-size:20px;font-weight:700;color:var(--text);line-height:1;}
+.ssv.t{color:var(--teal2);}
+.ssv.g{color:var(--gold2);}
+.ssl{font-size:9px;font-weight:500;color:var(--text3);margin-top:2px;text-transform:uppercase;letter-spacing:.05em;}
+
+/* ── CONTENT ── */
+.content{flex:1;overflow:hidden;display:flex;flex-direction:column;}
+.view{display:none;flex:1;overflow:hidden;flex-direction:column;}
+.view.on{display:flex;}
+
+/* ── LOADING ── */
+.loading{display:flex;align-items:center;justify-content:center;flex:1;gap:10px;color:var(--text3);font-size:12px;}
+.spinner{width:18px;height:18px;border:2px solid var(--border2);border-top-color:var(--gold);border-radius:50%;animation:spin .6s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg);}}
+
+/* ── EMPTY ── */
+.cx-empty{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;color:var(--text3);text-align:center;padding:60px;}
+.cx-empty-icon{width:64px;height:64px;border-radius:50%;background:var(--ink3);border:1px solid var(--border2);display:flex;align-items:center;justify-content:center;font-size:24px;}
+.cx-empty-title{font-family:var(--serif);font-size:22px;color:var(--text2);font-style:italic;}
+.cx-empty-sub{font-size:12px;max-width:240px;line-height:1.65;}
+
+/* ── COMPOSER ── */
+.cx-scroll{flex:1;overflow-y:auto;padding:24px 28px;}
+.cx-scroll::-webkit-scrollbar{width:3px;}
+.cx-scroll::-webkit-scrollbar-thumb{background:var(--ink3);}
+
+.cx-pbar{background:var(--ink2);border:1px solid var(--border2);border-radius:12px;padding:18px 22px;margin-bottom:18px;display:flex;align-items:center;gap:16px;position:relative;overflow:hidden;}
+.cx-pbar::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:linear-gradient(180deg,var(--gold),var(--gold2));}
+.cx-ava{width:44px;height:44px;border-radius:50%;background:linear-gradient(135deg,var(--ink3),var(--ink));border:1.5px solid var(--border2);font-family:var(--serif);font-size:17px;color:var(--text2);display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.cx-pname{font-family:var(--serif);font-size:21px;font-weight:700;color:var(--text);}
+.cx-pmeta{display:flex;gap:14px;margin-top:5px;flex-wrap:wrap;font-family:var(--mono);font-size:10px;color:var(--text3);}
+
+.cx-banner{border-radius:8px;padding:10px 14px;margin-bottom:16px;font-size:12px;line-height:1.55;display:flex;align-items:flex-start;gap:9px;}
+.b-good{background:rgba(11,139,124,.08);border:1px solid rgba(11,139,124,.2);color:var(--teal2);}
+.b-warn{background:rgba(200,146,42,.08);border:1px solid rgba(200,146,42,.2);color:var(--gold2);}
+
+.cx-lbl{font-size:9px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);margin-bottom:8px;}
+
+.ch-toggle{display:flex;background:var(--ink3);border:1px solid var(--border2);border-radius:8px;overflow:hidden;margin-bottom:18px;width:fit-content;}
+.ch-btn{padding:8px 22px;font-size:12px;font-weight:500;cursor:pointer;border:none;background:none;color:var(--text3);transition:all .15s;font-family:var(--sans);}
+.ch-btn.on{background:var(--gold);color:var(--ink);font-weight:600;}
+
+.timing-row{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:18px;}
+.tm{background:var(--ink3);border:1.5px solid var(--border);border-radius:8px;padding:10px 8px;cursor:pointer;text-align:center;transition:all .15s;}
+.tm.on{border-color:rgba(200,146,42,.5);background:rgba(200,146,42,.08);}
+.tm:hover:not(.on){border-color:var(--border2);}
+.tm-lbl{font-size:11px;font-weight:600;color:var(--text);}
+.tm-sub{font-size:9px;color:var(--text3);margin-top:2px;}
+.tm-best{font-size:8px;color:var(--teal2);font-weight:700;margin-top:3px;font-family:var(--mono);}
+
+.tmpl-row{display:flex;gap:6px;margin-bottom:10px;}
+.tmpl-btn{font-size:10px;font-weight:500;padding:5px 13px;border-radius:5px;cursor:pointer;border:1px solid var(--border);background:var(--ink3);color:var(--text3);transition:all .12s;font-family:var(--mono);}
+.tmpl-btn.on{border-color:rgba(200,146,42,.4);color:var(--gold2);}
+
+textarea.msg{width:100%;background:var(--ink3);border:1px solid var(--border2);border-radius:9px;color:var(--text);font-family:var(--sans);font-size:12px;line-height:1.65;padding:13px;resize:vertical;min-height:120px;outline:none;transition:border-color .15s;}
+textarea.msg:focus{border-color:rgba(200,146,42,.4);}
+input.subj{width:100%;background:var(--ink3);border:1px solid var(--border2);border-radius:7px;color:var(--text);font-family:var(--sans);font-size:12px;padding:9px 12px;outline:none;margin-bottom:8px;transition:border-color .15s;}
+input.subj:focus{border-color:rgba(200,146,42,.4);}
+.char-ct{font-family:var(--mono);font-size:9px;color:var(--text3);text-align:right;margin-top:4px;margin-bottom:14px;}
+.char-ct.warn{color:var(--gold2);}
+.char-ct.over{color:var(--rose);}
+
+.send-row{display:flex;gap:8px;align-items:center;padding:14px 0 4px;}
+.btn-primary{font-family:var(--sans);font-size:12px;font-weight:600;padding:10px 24px;border-radius:8px;cursor:pointer;border:none;background:linear-gradient(135deg,var(--gold),var(--gold2));color:var(--ink);box-shadow:0 3px 12px rgba(200,146,42,.3);transition:all .15s;display:flex;align-items:center;gap:7px;}
+.btn-primary:hover{transform:translateY(-1px);}
+.btn-primary:disabled{opacity:.5;cursor:not-allowed;transform:none;}
+.btn-ghost{font-family:var(--sans);font-size:11px;font-weight:500;padding:8px 14px;border-radius:7px;cursor:pointer;border:1px solid var(--border2);background:none;color:var(--text2);transition:all .15s;}
+.btn-ghost:hover{color:var(--text);}
+.btn-danger{font-size:11px;font-weight:500;padding:8px 14px;border-radius:7px;cursor:pointer;border:1px solid rgba(192,55,74,.25);background:none;color:#E07080;transition:all .15s;font-family:var(--sans);}
+.cn-row{margin-left:auto;display:flex;align-items:center;gap:8px;font-size:11px;color:var(--text3);cursor:pointer;user-select:none;}
+.tog{width:28px;height:16px;background:var(--ink3);border:1px solid var(--border2);border-radius:99px;position:relative;transition:background .2s;}
+.tog.on{background:var(--teal);}
+.tog-k{position:absolute;top:2px;left:2px;width:10px;height:10px;border-radius:50%;background:var(--text2);transition:all .2s;}
+.tog.on .tog-k{left:14px;background:#fff;}
+
+/* ── QUEUE ── */
+.q-scroll{flex:1;overflow-y:auto;padding:24px 28px;}
+.view-title{font-family:var(--serif);font-size:26px;font-weight:700;color:var(--text);margin-bottom:4px;}
+.view-sub{font-size:12px;color:var(--text3);margin-bottom:22px;line-height:1.6;}
+.qtable{width:100%;border-collapse:collapse;background:var(--ink2);border:1px solid var(--border);border-radius:10px;overflow:hidden;}
+.qtable th{text-align:left;font-size:9px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);padding:12px 14px;background:var(--ink3);border-bottom:1px solid var(--border);}
+.qtable td{padding:13px 14px;border-bottom:1px solid var(--border);vertical-align:middle;}
+.qtable tr:last-child td{border-bottom:none;}
+.qtable tr:hover td{background:rgba(255,255,255,.02);}
+.q-pname{font-weight:600;color:var(--text);}
+.q-pch{font-family:var(--mono);font-size:9px;color:var(--text3);margin-top:2px;}
+.q-cd{font-family:var(--mono);font-size:10px;background:rgba(200,146,42,.08);color:var(--gold2);padding:3px 8px;border-radius:4px;border:1px solid rgba(200,146,42,.2);display:inline-block;}
+.q-x{font-size:10px;padding:4px 10px;border-radius:5px;cursor:pointer;border:1px solid var(--border);background:none;color:var(--text3);transition:all .12s;font-family:var(--sans);}
+.q-x:hover{color:#E07080;border-color:rgba(192,55,74,.3);}
+.ch-sms{font-size:9px;font-weight:700;padding:2px 7px;border-radius:3px;font-family:var(--mono);background:rgba(255,255,255,.05);color:var(--text2);border:1px solid var(--border2);}
+.ch-email{font-size:9px;font-weight:700;padding:2px 7px;border-radius:3px;font-family:var(--mono);background:var(--teal-dim);color:var(--teal2);border:1px solid rgba(11,139,124,.2);}
+
+/* ── ANALYTICS ── */
+.an-scroll{flex:1;overflow-y:auto;padding:24px 28px;}
+.kpi-row{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px;}
+.kpi{background:var(--ink2);border:1px solid var(--border);border-radius:10px;padding:18px 20px;}
+.kpi-lbl{font-size:9px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);margin-bottom:8px;}
+.kpi-val{font-family:var(--serif);font-size:32px;font-weight:700;color:var(--text);line-height:1;}
+.kpi-val.g{color:var(--gold2);}
+.kpi-val.t{color:var(--teal2);}
+.kpi-delta{font-size:10px;margin-top:6px;font-family:var(--mono);color:var(--teal2);}
+.an-card{background:var(--ink2);border:1px solid var(--border);border-radius:10px;padding:18px 20px;margin-bottom:16px;}
+.an-card-title{font-size:12px;font-weight:600;color:var(--text);margin-bottom:16px;}
+.bar-chart{display:flex;align-items:flex-end;gap:5px;height:90px;}
+.bar-col{display:flex;flex-direction:column;align-items:center;flex:1;gap:4px;}
+.bar{border-radius:3px 3px 0 0;width:100%;min-height:3px;}
+.bar-a{background:linear-gradient(180deg,var(--gold2),var(--gold));}
+.bar-lbl{font-family:var(--mono);font-size:8px;color:var(--text3);}
+.an-two{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+
+/* ── SETTINGS ── */
+.st-scroll{flex:1;overflow-y:auto;padding:24px 28px;max-width:700px;}
+.st-card{background:var(--ink2);border:1px solid var(--border);border-radius:10px;margin-bottom:14px;overflow:hidden;}
+.st-head{padding:14px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;background:var(--ink3);}
+.st-htitle{font-size:12px;font-weight:600;color:var(--text);}
+.st-conn{display:flex;align-items:center;gap:6px;font-family:var(--mono);font-size:10px;color:var(--teal2);}
+.st-conn-dot{width:6px;height:6px;border-radius:50%;background:var(--teal2);}
+.st-conn.off{color:var(--text3);}
+.st-conn.off .st-conn-dot{background:var(--text3);}
+.st-body{padding:16px 18px;display:flex;flex-direction:column;gap:12px;}
+.fi-lbl{font-size:9px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--text3);margin-bottom:4px;}
+input.fi{width:100%;background:var(--ink3);border:1.5px solid var(--border2);border-radius:7px;color:var(--text);font-family:var(--sans);font-size:12px;padding:9px 11px;outline:none;transition:border-color .15s;}
+input.fi:focus{border-color:rgba(200,146,42,.4);}
+input.fi::placeholder{color:var(--text3);}
+.btn-sm{font-family:var(--sans);font-size:11px;font-weight:600;padding:8px 16px;border-radius:7px;cursor:pointer;border:none;background:linear-gradient(135deg,var(--gold),var(--gold2));color:var(--ink);transition:all .15s;}
+.btn-sm:hover{transform:translateY(-1px);}
+.btn-sm:disabled{opacity:.5;cursor:not-allowed;transform:none;}
+
+/* ── LAPSED ── */
+.lp-scroll{flex:1;overflow-y:auto;padding:24px 28px;}
+.re-summary{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:22px;}
+.re-sum-card{background:var(--ink2);border:1px solid var(--border);border-radius:9px;padding:14px 16px;}
+.re-sum-val{font-family:var(--serif);font-size:26px;font-weight:700;color:var(--text);line-height:1;}
+.re-sum-val.r{color:#E07080;}
+.re-sum-val.g{color:var(--gold2);}
+.re-sum-val.t{color:var(--teal2);}
+.re-sum-lbl{font-size:9px;color:var(--text3);margin-top:3px;text-transform:uppercase;letter-spacing:.06em;font-weight:500;}
+.re-sum-sub{font-size:10px;color:var(--text3);margin-top:4px;}
+.lp-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px;}
+.lp-card{background:var(--ink2);border:1px solid var(--border);border-radius:10px;padding:16px 18px;transition:all .15s;position:relative;overflow:hidden;}
+.lp-card::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:linear-gradient(180deg,var(--rose),transparent);}
+.lp-card:hover{border-color:rgba(192,55,74,.3);}
+.lp-name{font-size:13px;font-weight:600;color:var(--text);}
+.lp-sub{font-family:var(--mono);font-size:10px;color:var(--text3);margin-top:2px;}
+.lp-gap-badge{font-family:var(--mono);font-size:10px;font-weight:600;padding:3px 9px;border-radius:5px;background:rgba(192,55,74,.1);color:#E07080;border:1px solid rgba(192,55,74,.2);}
+.lp-detail-row{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:12px 0;}
+.lp-detail{background:var(--ink3);border:1px solid var(--border);border-radius:6px;padding:7px 9px;}
+.lp-dlbl{font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;font-weight:600;margin-bottom:2px;}
+.lp-dval{font-size:11px;color:var(--text2);font-weight:500;}
+.btn-re{flex:1;font-family:var(--sans);font-size:11px;font-weight:600;padding:8px;border-radius:7px;cursor:pointer;background:rgba(192,55,74,.12);color:#E07080;border:1px solid rgba(192,55,74,.2);transition:all .15s;}
+.btn-re:hover{background:rgba(192,55,74,.2);}
+.btn-re-em{background:rgba(255,255,255,.04);color:var(--text2);border:1px solid var(--border2);}
+.btn-re-em:hover{background:rgba(255,255,255,.08);}
+
+/* ── NO-SHOW ── */
+.ns-scroll{flex:1;overflow-y:auto;padding:24px 28px;}
+.ns-summary{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:22px;}
+.ns-sum-card{background:var(--ink2);border:1px solid var(--border);border-radius:9px;padding:14px 16px;}
+.ns-sum-val{font-family:var(--serif);font-size:26px;font-weight:700;color:var(--text);line-height:1;}
+.ns-sum-val.b{color:#6AABF7;}
+.ns-sum-val.g{color:var(--gold2);}
+.ns-two{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+.ns-panel{background:var(--ink2);border:1px solid var(--border);border-radius:10px;overflow:hidden;}
+.ns-panel-head{padding:14px 16px;background:var(--ink3);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;}
+.ns-panel-title{font-size:12px;font-weight:600;color:var(--text);}
+.ns-row{padding:12px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;}
+.ns-row:last-child{border-bottom:none;}
+.ns-pname{font-size:12px;font-weight:500;color:var(--text);}
+.ns-ptime{font-family:var(--mono);font-size:9px;color:var(--text3);margin-top:1px;}
+.ns-ava{width:30px;height:30px;border-radius:50%;background:var(--ink3);border:1px solid var(--border2);font-family:var(--serif);font-size:12px;color:var(--text2);display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.ns-fill-btn{font-size:10px;font-weight:500;padding:4px 10px;border-radius:5px;cursor:pointer;border:1px solid rgba(26,111,196,.3);background:rgba(26,111,196,.08);color:#6AABF7;transition:all .12s;font-family:var(--sans);margin-left:auto;}
+.ns-fill-btn:hover{background:rgba(26,111,196,.15);}
+.wl-notify{font-size:10px;padding:4px 10px;border-radius:5px;cursor:pointer;border:1px solid rgba(11,139,124,.3);background:rgba(11,139,124,.08);color:var(--teal2);transition:all .12s;font-family:var(--sans);margin-left:auto;}
+.wl-notify:hover{background:rgba(11,139,124,.15);}
+.wl-notified{font-size:9px;font-weight:600;padding:2px 7px;border-radius:4px;background:rgba(11,139,124,.1);color:var(--teal2);border:1px solid rgba(11,139,124,.2);font-family:var(--mono);margin-left:auto;}
+.wl-pos{font-family:var(--mono);font-size:11px;font-weight:600;color:var(--text3);width:20px;flex-shrink:0;}
+.ns-filled{font-size:9px;font-weight:600;padding:2px 7px;border-radius:4px;background:rgba(11,139,124,.1);color:var(--teal2);border:1px solid rgba(11,139,124,.2);font-family:var(--mono);margin-left:auto;}
+
+/* ── TOAST ── */
+#toasts{position:fixed;bottom:20px;right:20px;display:flex;flex-direction:column;gap:7px;z-index:9999;}
+.toast{background:var(--ink2);border:1px solid var(--border2);border-radius:9px;padding:12px 16px;font-size:12px;color:var(--text);box-shadow:0 8px 32px rgba(0,0,0,.5);display:flex;align-items:center;gap:10px;animation:tin .2s ease;max-width:320px;}
+.toast.ok{border-left:3px solid var(--teal2);}
+.toast.warn{border-left:3px solid var(--gold2);}
+.toast.info{border-left:3px solid #6AABF7;}
+.toast.err{border-left:3px solid #E07080;}
+@keyframes tin{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:translateY(0);}}
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div class="login-screen" id="login-screen">
+  <div class="login-box">
+    <div class="login-logo">
+      <div class="login-logo-gem">★</div>
+      ReviewReach
+    </div>
+    <div class="login-sub">Practice growth platform</div>
+    <div class="login-field">
+      <label class="login-label">Email</label>
+      <input type="email" class="login-input" id="l-email" placeholder="you@practice.com" value="demo@westside.com">
+    </div>
+    <div class="login-field">
+      <label class="login-label">Password</label>
+      <input type="password" class="login-input" id="l-pass" placeholder="••••••••" value="demo1234">
+    </div>
+    <button class="login-btn" id="l-btn" onclick="doLogin()">Sign In →</button>
+    <div class="login-error" id="l-err" style="display:none;"></div>
+    <div class="login-demo">Demo credentials pre-filled</div>
+  </div>
+</div>
+
+<!-- APP -->
+<div class="app" id="app">
+
+  <!-- TOPBAR -->
+  <div class="topbar">
+    <div class="logo"><div class="logo-gem">★</div>ReviewReach</div>
+    <nav class="top-nav">
+      <div class="tn active" onclick="switchView(this,'outreach')">Outreach</div>
+      <div class="tn" onclick="switchView(this,'queue')">
+        Queue
+        <span class="tn-badge" id="qbadge" style="display:none;"></span>
+      </div>
+      <div class="tn" onclick="switchView(this,'lapsed')">Lapsed Patients</div>
+      <div class="tn" onclick="switchView(this,'noshow')">No-Show Recovery</div>
+      <div class="tn" onclick="switchView(this,'analytics')">Analytics</div>
+      <div class="tn" onclick="switchView(this,'settings')">Settings</div>
+    </nav>
+    <div class="topbar-r">
+      <div class="api-pill" id="api-status-pill">
+        <div class="api-dot"></div>
+        <span id="api-status-text">Connecting…</span>
+      </div>
+      <div class="user-pill">
+        <div class="user-ava" id="user-ava">?</div>
+        <span id="user-name">Loading…</span>
+      </div>
+      <button class="btn-logout" onclick="doLogout()">Sign Out</button>
+    </div>
+  </div>
+
+  <!-- SHELL -->
+  <div class="shell">
+
+    <!-- SIDEBAR -->
+    <div class="sidebar">
+      <div class="sb-head">
+        <div class="sb-date" id="sb-date"></div>
+        <div class="sb-search">
+          <span class="sb-ic">⌕</span>
+          <input type="text" id="psearch" placeholder="Search patient or chart #" oninput="filterP()">
+        </div>
+      </div>
+      <div class="sb-sec">Today's Schedule <span class="sb-cnt" id="sb-cnt">—</span></div>
+      <div class="pscroll" id="plist">
+        <div class="loading"><div class="spinner"></div>Loading…</div>
+      </div>
+      <div class="sb-stats">
+        <div class="sb-stat"><div class="ssv" id="ss-t">—</div><div class="ssl">Patients</div></div>
+        <div class="sb-stat"><div class="ssv t" id="ss-s">—</div><div class="ssl">Sent</div></div>
+        <div class="sb-stat"><div class="ssv g" id="ss-q">—</div><div class="ssl">Queued</div></div>
+        <div class="sb-stat"><div class="ssv" id="ss-r">—</div><div class="ssl">Rate</div></div>
+      </div>
+    </div>
+
+    <!-- CONTENT -->
+    <div class="content">
+
+      <!-- OUTREACH -->
+      <div class="view on" id="view-outreach">
+        <div class="cx-empty" id="cx-empty">
+          <div class="cx-empty-icon">✦</div>
+          <div class="cx-empty-title">Select a patient</div>
+          <div class="cx-empty-sub">Choose from today's schedule to compose a personalized review request.</div>
+        </div>
+        <div class="cx-scroll" id="cx-area" style="display:none;">
+          <div id="cx-inner"></div>
+        </div>
+      </div>
+
+      <!-- QUEUE -->
+      <div class="view" id="view-queue">
+        <div class="q-scroll">
+          <div class="view-title">Scheduled Queue</div>
+          <div class="view-sub">Messages scheduled for future delivery. Auto-sent at the scheduled time.</div>
+          <table class="qtable">
+            <thead><tr>
+              <th>Patient</th><th>Channel</th><th>Template</th>
+              <th>Scheduled For</th><th>Countdown</th><th>Chart Note</th><th></th>
+            </tr></thead>
+            <tbody id="qtbody"><tr><td colspan="7" style="text-align:center;padding:24px;color:var(--text3);font-size:11px;">No messages scheduled.</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- LAPSED -->
+      <div class="view" id="view-lapsed">
+        <div class="lp-scroll">
+          <div class="view-title">Lapsed Patient Re-engagement</div>
+          <div class="view-sub">Patients not seen in 12+ months. All pulled live from athenaOne.</div>
+          <div class="re-summary">
+            <div class="re-sum-card"><div class="re-sum-val r" id="lp-count">—</div><div class="re-sum-lbl">Lapsed Patients</div><div class="re-sum-sub">12+ months since last visit</div></div>
+            <div class="re-sum-card"><div class="re-sum-val g" id="lp-revenue">—</div><div class="re-sum-lbl">Revenue Opportunity</div><div class="re-sum-sub">Est. at avg $1,455/patient/yr</div></div>
+            <div class="re-sum-card"><div class="re-sum-val t" id="lp-reengaged">0</div><div class="re-sum-lbl">Re-engaged (30d)</div><div class="re-sum-sub">Booked after outreach</div></div>
+            <div class="re-sum-card"><div class="re-sum-val" id="lp-rate">—</div><div class="re-sum-lbl">Re-engagement Rate</div><div class="re-sum-sub">Industry avg: 8–12%</div></div>
+          </div>
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+            <div style="font-size:11px;color:var(--text3);" id="lp-status">Loading lapsed patients…</div>
+            <button class="btn-primary" style="font-size:11px;padding:8px 18px;" onclick="bulkReengage()">⚡ Bulk Re-engage All</button>
+          </div>
+          <div class="lp-grid" id="lp-grid"><div class="loading"><div class="spinner"></div>Loading…</div></div>
+        </div>
+      </div>
+
+      <!-- NO-SHOW -->
+      <div class="view" id="view-noshow">
+        <div class="ns-scroll">
+          <div class="view-title">No-Show Recovery</div>
+          <div class="view-sub">Today's cancellations matched against your waitlist. Fill slots and recover lost revenue.</div>
+          <div class="ns-summary">
+            <div class="ns-sum-card"><div class="ns-sum-val b" id="ns-slots-count">—</div><div class="re-sum-lbl">Open Slots Today</div></div>
+            <div class="ns-sum-card"><div class="ns-sum-val g" id="ns-revenue">—</div><div class="re-sum-lbl">Revenue at Risk</div></div>
+            <div class="ns-sum-card"><div class="ns-sum-val" id="ns-wl-count">—</div><div class="re-sum-lbl">Waitlist Patients</div></div>
+            <div class="ns-sum-card"><div class="ns-sum-val t">78%</div><div class="re-sum-lbl">Fill Rate (30d)</div></div>
+          </div>
+          <div class="ns-two">
+            <div class="ns-panel">
+              <div class="ns-panel-head">
+                <div class="ns-panel-title">📅 Open Slots — Today</div>
+                <button class="btn-primary" style="font-size:10px;padding:6px 14px;" onclick="notifyAll()">Notify All Waitlist</button>
+              </div>
+              <div id="ns-slots-body"><div class="loading" style="padding:20px;"><div class="spinner"></div>Loading…</div></div>
+            </div>
+            <div class="ns-panel">
+              <div class="ns-panel-head">
+                <div class="ns-panel-title">⏳ Waitlist</div>
+                <span id="ns-wl-label" style="font-size:10px;color:var(--text3);font-family:var(--mono);">Loading…</span>
+              </div>
+              <div id="ns-wl-body"><div class="loading" style="padding:20px;"><div class="spinner"></div>Loading…</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ANALYTICS -->
+      <div class="view" id="view-analytics">
+        <div class="an-scroll">
+          <div class="view-title">Performance Analytics</div>
+          <div class="view-sub">30-day view across all modules.</div>
+          <div class="kpi-row">
+            <div class="kpi"><div class="kpi-lbl">Reviews Sent (30d)</div><div class="kpi-val g" id="an-sent">—</div><div class="kpi-delta" id="an-sent-d"></div></div>
+            <div class="kpi"><div class="kpi-lbl">SMS Sent</div><div class="kpi-val" id="an-sms">—</div></div>
+            <div class="kpi"><div class="kpi-lbl">Email Sent</div><div class="kpi-val t" id="an-email">—</div></div>
+            <div class="kpi"><div class="kpi-lbl">Failed</div><div class="kpi-val" id="an-failed">—</div></div>
+          </div>
+          <div class="an-card">
+            <div class="an-card-title">Daily Outreach — Last 7 Days</div>
+            <div class="bar-chart" id="bar-chart"></div>
+          </div>
+          <div class="an-two">
+            <div class="an-card">
+              <div class="an-card-title">By Provider (Today)</div>
+              <div id="an-providers"></div>
+            </div>
+            <div class="an-card">
+              <div class="an-card-title">Message Status</div>
+              <div id="an-status"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SETTINGS -->
+      <div class="view" id="view-settings">
+        <div class="st-scroll">
+          <div class="view-title" style="margin-bottom:20px;">Settings</div>
+          <div class="st-card">
+            <div class="st-head">
+              <div class="st-htitle">⚡ athenahealth API</div>
+              <div class="st-conn" id="ath-conn"><div class="st-conn-dot"></div><span id="ath-conn-label">Checking…</span></div>
+            </div>
+            <div class="st-body">
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                <div><div class="fi-lbl">Practice ID</div><input class="fi" id="s-pid" readonly style="opacity:.6;"></div>
+                <div><div class="fi-lbl">Environment</div><input class="fi" id="s-env" readonly style="opacity:.6;"></div>
+              </div>
+              <div style="font-size:11px;color:var(--text3);">API credentials are stored securely in Azure Key Vault — not accessible from this interface.</div>
+              <button class="btn-sm" onclick="testAthena()">Test Connection</button>
+            </div>
+          </div>
+          <div class="st-card">
+            <div class="st-head"><div class="st-htitle">★ Google Business Profile</div></div>
+            <div class="st-body">
+              <div><div class="fi-lbl">Direct Review Link</div><input class="fi" id="s-glink" placeholder="https://g.page/r/YOUR_PLACE_ID/review"></div>
+              <div><div class="fi-lbl">Practice Name</div><input class="fi" id="s-pname" placeholder="Westside Medical Group"></div>
+              <button class="btn-sm" onclick="saveSettings()">Save Settings</button>
+            </div>
+          </div>
+          <div class="st-card">
+            <div class="st-head"><div class="st-htitle">⚙ Modules</div></div>
+            <div class="st-body">
+              <div id="modules-list"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /content -->
+  </div><!-- /shell -->
+</div><!-- /app -->
+
+<div id="toasts"></div>
+
+<script>
+// ═══════════════════ CONFIG ═══════════════════
+// Change this to your Azure App Service URL in production
+const API_BASE = window.location.hostname === 'localhost'
+  ? 'http://localhost:3001'
+  : 'https://reviewreach-api.azurewebsites.net';
+
+// ═══════════════════ STATE ═══════════════════
+let token = localStorage.getItem('rr_token');
+let user  = JSON.parse(localStorage.getItem('rr_user') || 'null');
+let schedule = [];
+let sel = null, ch = 'sms', tm = '3hr', ti = 0, cn = true;
+let sentMap = {};
+let queue = [];
+let lapsedPatients = [];
+let notifiedWL = new Set();
+let filledSlots = new Set();
+
+// ═══════════════════ API CLIENT ═══════════════════
+async function api(method, path, body = null) {
+  const opts = {
+    method,
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+  };
+  if (body) opts.body = JSON.stringify(body);
+
+  const res = await fetch(`${API_BASE}${path}`, opts);
+
+  if (res.status === 401) {
+    doLogout();
+    throw new Error('Session expired');
+  }
+
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Request failed');
+  return data;
+}
+
+// ═══════════════════ AUTH ═══════════════════
+async function doLogin() {
+  const email = document.getElementById('l-email').value;
+  const pass  = document.getElementById('l-pass').value;
+  const btn   = document.getElementById('l-btn');
+  const err   = document.getElementById('l-err');
+
+  btn.disabled = true;
+  btn.textContent = 'Signing in…';
+  err.style.display = 'none';
+
+  try {
+    const data = await api('POST', '/api/auth/login', { email, password: pass });
+    token = data.token;
+    user  = data.user;
+    localStorage.setItem('rr_token', token);
+    localStorage.setItem('rr_user', JSON.stringify(user));
+    initApp();
+  } catch (e) {
+    err.textContent = e.message;
+    err.style.display = 'block';
+    btn.disabled = false;
+    btn.textContent = 'Sign In →';
+  }
+}
+
+function doLogout() {
+  localStorage.removeItem('rr_token');
+  localStorage.removeItem('rr_user');
+  token = null; user = null;
+  document.getElementById('app').classList.remove('visible');
+  document.getElementById('login-screen').style.display = 'flex';
+}
+
+// ═══════════════════ INIT ═══════════════════
+window.addEventListener('DOMContentLoaded', () => {
+  if (token && user) {
+    initApp();
+  }
+  const d = new Date();
+  const days = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  document.getElementById('sb-date').textContent =
+    `${days[d.getDay()]}, ${months[d.getMonth()]} ${d.getDate()}`;
+});
+
+async function initApp() {
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('app').classList.add('visible');
+
+  // Set user info
+  document.getElementById('user-name').textContent = user.name;
+  document.getElementById('user-ava').textContent = user.name[0];
+
+  // Load everything in parallel
+  await Promise.all([
+    loadSchedule(),
+    checkAthenaStatus(),
+    loadSettings(),
+  ]);
+}
+
+// ═══════════════════ SCHEDULE ═══════════════════
+async function loadSchedule() {
+  try {
+    const data = await api('GET', '/api/athena/schedule');
+    schedule = data.schedule || [];
+
+    // Build sent map
+    sentMap = {};
+    schedule.forEach(p => {
+      if (p.outreachStatus) sentMap[p.patientid] = p.outreachStatus;
+    });
+
+    renderPList(schedule);
+    updateStats();
+    toast('ok', '⚡', `${schedule.length} patients loaded from athenahealth.`);
+  } catch (e) {
+    document.getElementById('plist').innerHTML =
+      `<div style="padding:16px;color:#E07080;font-size:11px;">Failed to load schedule: ${e.message}</div>`;
+    toast('err', '✕', `Schedule load failed: ${e.message}`);
+  }
+}
+
+async function checkAthenaStatus() {
+  try {
+    const data = await api('GET', '/api/athena/status');
+    const pill = document.getElementById('api-status-pill');
+    const txt  = document.getElementById('api-status-text');
+    if (data.connected) {
+      pill.className = 'api-pill';
+      txt.textContent = `athenahealth ${data.environment === 'sandbox' ? 'Sandbox' : 'Live'}`;
+    } else {
+      pill.className = 'api-pill disconnected';
+      txt.textContent = 'Disconnected';
+    }
+  } catch (e) {
+    const pill = document.getElementById('api-status-pill');
+    pill.className = 'api-pill disconnected';
+    document.getElementById('api-status-text').textContent = 'Disconnected';
+  }
+}
+
+async function loadSettings() {
+  try {
+    const data = await api('GET', '/api/settings');
+    const s = data.settings;
+    if (!s) return;
+    document.getElementById('s-pid').value  = s.athena_practice_id || '';
+    document.getElementById('s-env').value  = s.athena_environment || '';
+    document.getElementById('s-glink').value = s.google_review_link || '';
+    document.getElementById('s-pname').value = s.name || '';
+
+    const mods = [
+      { key: 'module_reviews',    label: '★ Review Outreach',              val: s.module_reviews },
+      { key: 'module_lapsed',     label: '🔄 Lapsed Patient Re-engagement', val: s.module_lapsed },
+      { key: 'module_noshow',     label: '📅 No-Show Recovery',             val: s.module_noshow },
+      { key: 'module_chart_notes',label: '📋 Chart Note Logging',           val: s.module_chart_notes },
+    ];
+    document.getElementById('modules-list').innerHTML = mods.map(m => `
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;background:var(--ink3);border-radius:7px;border:1px solid var(--border);margin-bottom:8px;">
+        <div style="font-size:12px;font-weight:500;color:var(--text);">${m.label}</div>
+        <div class="tog${m.val ? ' on' : ''}" onclick="this.classList.toggle('on')"><div class="tog-k"></div></div>
+      </div>`).join('');
+  } catch (e) {
+    console.warn('Settings load failed:', e.message);
+  }
+}
+
+// ═══════════════════ PATIENT LIST ═══════════════════
+function renderPList(list) {
+  const el = document.getElementById('plist');
+  document.getElementById('sb-cnt').textContent = list.length;
+  if (!list.length) {
+    el.innerHTML = `<div style="padding:20px;text-align:center;color:var(--text3);font-size:11px;">No patients found.</div>`;
+    return;
+  }
+  el.innerHTML = list.map(p => {
+    const status  = sentMap[p.patientid];
+    const isSent  = status === 'sent';
+    const isQ     = status === 'queued';
+    const isSel   = sel && sel.patientid === p.patientid;
+    return `<div class="pc${isSel ? ' sel' : ''}" onclick="selP('${p.patientid}')">
+      <div class="pc-ava">${p.firstname[0]}${p.lastname[0]}</div>
+      <div class="pc-body">
+        <div class="pc-name">${p.firstname} ${p.lastname}</div>
+        <div class="pc-sub">${p.starttime} · ${p.appointmenttype}</div>
+        <div class="pc-tags">
+          ${isSent ? '<span class="tag t-sent">✓ SENT</span>' : ''}
+          ${isQ    ? '<span class="tag t-q">⏱ QUEUED</span>'  : ''}
+          ${!p.canContact ? '<span class="tag" style="background:rgba(192,55,74,.1);color:#E07080;border:1px solid rgba(192,55,74,.2);">NO CONTACT</span>' : ''}
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function filterP() {
+  const q = document.getElementById('psearch').value.toLowerCase();
+  renderPList(schedule.filter(p =>
+    `${p.firstname} ${p.lastname}`.toLowerCase().includes(q) ||
+    p.patientid.includes(q)
+  ));
+}
+
+function selP(id) {
+  sel = schedule.find(p => p.patientid === id);
+  ti  = 0;
+  const q = document.getElementById('psearch').value.toLowerCase();
+  renderPList(schedule.filter(p =>
+    `${p.firstname} ${p.lastname}`.toLowerCase().includes(q) ||
+    p.patientid.includes(q)
+  ));
+  document.getElementById('cx-empty').style.display = 'none';
+  document.getElementById('cx-area').style.display  = 'block';
+  renderCX();
+}
+
+function updateStats() {
+  const t = schedule.length;
+  const s = schedule.filter(p => sentMap[p.patientid] === 'sent').length;
+  const q = schedule.filter(p => sentMap[p.patientid] === 'queued').length;
+  const r = t ? Math.round(((s + q) / t) * 100) : 0;
+  document.getElementById('ss-t').textContent = t;
+  document.getElementById('ss-s').textContent = s;
+  document.getElementById('ss-q').textContent = q;
+  document.getElementById('ss-r').textContent = r + '%';
+}
+
+// ═══════════════════ COMPOSER ═══════════════════
+const SMS_T = {
+  warm:    (p, pr, l) => `Hi ${p.firstname}! We hope your visit went well today. A quick Google review would mean the world to us — it helps others find great care. ${l}`,
+  brief:   (p, pr, l) => `Hi ${p.firstname}, thank you for visiting ${pr} today. We'd love your Google review: ${l}`,
+  personal:(p, pr, l) => `Hi ${p.firstname} — the team at ${pr} loved seeing you. Share your experience: ${l}`,
+};
+const EMAIL_T = {
+  warm:    { subj:(p,pr)=>`Thank you for visiting ${pr}, ${p.firstname}`, body:(p,pr,l)=>`Hi ${p.firstname},\n\nThank you for your visit at ${pr} today. We'd be grateful if you shared your experience on Google.\n\n→ ${l}\n\nWith gratitude,\nThe ${pr} Team` },
+  brief:   { subj:(p,pr)=>`Quick note from ${pr}`, body:(p,pr,l)=>`Hi ${p.firstname},\n\nThank you for visiting ${pr}.\n\n${l}\n\n${pr}` },
+  personal:{ subj:(p,pr)=>`The ${pr} team appreciates you`, body:(p,pr,l)=>`Dear ${p.firstname},\n\nOur team enjoyed seeing you today. Would you take 60 seconds?\n\n${l}\n\nWith warmth,\nThe ${pr} Team` },
+};
+
+function renderCX() {
+  const p = sel; if (!p) return;
+  const pr = document.getElementById('s-pname')?.value || 'Your Practice';
+  const link = document.getElementById('s-glink')?.value || '#';
+  const day  = new Date().getDay();
+  const good = day >= 2 && day <= 4;
+  const warn = day === 1 || day === 5;
+  const tIds = ['warm', 'brief', 'personal'];
+  const tid  = tIds[ti] || 'warm';
+  const arr  = ch === 'sms' ? SMS_T : EMAIL_T;
+  const body = ch === 'sms' ? arr[tid](p, pr, link) : arr[tid].body(p, pr, link);
+  const subj = ch === 'email' ? arr[tid].subj(p, pr) : '';
+  const cl   = body.length;
+  const timings = [
+    { id:'now', lbl:'Send Now', sub:'Immediate', best:false },
+    { id:'3hr', lbl:'3 Hrs Later', sub:'Post-visit', best:true },
+    { id:'evening', lbl:'This Evening', sub:'6:00 PM', best:false },
+    { id:'morning', lbl:'Next Morning', sub:'9:00 AM', best:false },
+  ];
+  const banner = good
+    ? `<div class="cx-banner b-good"><span>✦</span><span><strong>High-response day.</strong> Tue–Thu see 5–10% higher engagement. 3 Hrs Later is ideal today.</span></div>`
+    : warn ? `<div class="cx-banner b-warn"><span>▲</span><span><strong>Lower-response day.</strong> Consider <strong>Next Morning</strong> for better results.</span></div>` : '';
+
+  document.getElementById('cx-inner').innerHTML = `
+    <div class="cx-pbar">
+      <div class="cx-ava">${p.firstname[0]}${p.lastname[0]}</div>
+      <div style="flex:1;">
+        <div class="cx-pname">${p.firstname} ${p.lastname}</div>
+        <div class="cx-pmeta">
+          <span>🕐 ${p.starttime}</span>
+          <span>🏥 ${p.appointmenttype}</span>
+          <span>📱 ${p.mobilephone || '—'}</span>
+          <span>✉ ${p.email || '—'}</span>
+          ${!p.canContact ? '<span style="color:#E07080;">⚠ No contact info</span>' : ''}
+        </div>
+      </div>
+    </div>
+    ${banner}
+    <div class="cx-lbl">Channel</div>
+    <div class="ch-toggle">
+      <button class="ch-btn${ch==='sms'?' on':''}" onclick="setCh('sms')">📱 SMS</button>
+      <button class="ch-btn${ch==='email'?' on':''}" onclick="setCh('email')">✉ Email</button>
+    </div>
+    <div class="cx-lbl">Send Timing</div>
+    <div class="timing-row">
+      ${timings.map(t=>`<div class="tm${tm===t.id?' on':''}" onclick="setTm('${t.id}')">
+        <div class="tm-lbl">${t.lbl}</div><div class="tm-sub">${t.sub}</div>
+        ${t.best?'<div class="tm-best">★ BEST</div>':''}
+      </div>`).join('')}
+    </div>
+    <div class="cx-lbl">Template</div>
+    <div class="tmpl-row">
+      ${['Warm','Brief','Personal'].map((l,i)=>`<button class="tmpl-btn${ti===i?' on':''}" onclick="setTi(${i})">${l}</button>`).join('')}
+    </div>
+    ${ch==='email'?`<div class="cx-lbl">Subject</div><input class="subj" id="esubj" value="${subj}">`:''}
+    <div class="cx-lbl">Message</div>
+    <textarea class="msg" id="msg-ta" rows="5" oninput="onCC(this)">${body}</textarea>
+    ${ch==='sms'?`<div class="char-ct${cl>320?' over':cl>280?' warn':''}" id="cc">${cl}/320</div>`:'<div style="height:14px;"></div>'}
+    <div class="send-row">
+      <button class="btn-primary" id="send-btn" onclick="doSend()" ${!p.canContact?'disabled':''}>
+        ${tm==='now'?'⚡ Send Now':'⏱ Schedule Send'}
+      </button>
+      <label class="cn-row" onclick="toggleCN()">
+        <div class="tog${cn?' on':''}" id="cnt"><div class="tog-k"></div></div>
+        Log chart note
+      </label>
+    </div>
+    <div style="height:48px;"></div>`;
+}
+
+function setCh(c){ ch=c; ti=0; renderCX(); }
+function setTm(t){ tm=t; renderCX(); }
+function setTi(i){ ti=i; renderCX(); }
+function toggleCN(){ cn=!cn; renderCX(); }
+function onCC(el){const c=document.getElementById('cc');if(!c)return;const l=el.value.length;c.textContent=`${l}/320`;c.className=`char-ct${l>320?' over':l>280?' warn':''}`;}
+
+async function doSend() {
+  const p = sel; if (!p) return;
+  const btn  = document.getElementById('send-btn');
+  const body = document.getElementById('msg-ta')?.value || '';
+  const subj = document.getElementById('esubj')?.value  || '';
+  const tIds = ['warm','brief','personal'];
+
+  btn.disabled     = true;
+  btn.textContent  = 'Sending…';
+
+  try {
+    const res = await api('POST', '/api/outreach/send', {
+      patientId:     p.patientid,
+      appointmentId: p.appointmentid,
+      channel:       ch,
+      templateId:    tIds[ti] || 'warm',
+      timing:        tm,
+      customBody:    body,
+      customSubject: subj || null,
+      chartNote:     cn,
+    });
+
+    sentMap[p.patientid] = res.status === 'sent' ? 'sent' : 'queued';
+
+    if (res.status === 'sent') {
+      toast('ok', '✓', `Review request sent to ${p.firstname} via ${ch.toUpperCase()}.`);
+    } else {
+      toast('info', '⏱', `Scheduled for delivery. Queue ID: ${res.message?.id}`);
+      loadQueue();
+    }
+
+    updateStats();
+    const q = document.getElementById('psearch').value.toLowerCase();
+    renderPList(schedule.filter(pa => `${pa.firstname} ${pa.lastname}`.toLowerCase().includes(q) || pa.patientid.includes(q)));
+    renderCX();
+  } catch (e) {
+    toast('err', '✕', `Send failed: ${e.message}`);
+    btn.disabled    = false;
+    btn.textContent = tm === 'now' ? '⚡ Send Now' : '⏱ Schedule Send';
+  }
+}
+
+// ═══════════════════ QUEUE ═══════════════════
+async function loadQueue() {
+  try {
+    const data = await api('GET', '/api/queue');
+    queue = data.items || [];
+    renderQT();
+    updQBadge();
+  } catch (e) {
+    console.warn('Queue load failed:', e.message);
+  }
+}
+
+function renderQT() {
+  const tb = document.getElementById('qtbody');
+  if (!queue.length) {
+    tb.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:24px;color:var(--text3);font-size:11px;">No messages scheduled.</td></tr>`;
+    return;
+  }
+  const now = Date.now();
+  tb.innerHTML = queue.filter(q => q.status === 'queued').map(q => {
+    const diff = new Date(q.send_at).getTime() - now;
+    const m = Math.floor(diff / 60000), h = Math.floor(m / 60);
+    const cd = diff > 0 ? (h > 0 ? `${h}h ${m % 60}m` : `${m}m`) : 'Sending…';
+    return `<tr>
+      <td><div class="q-pname">${q.patient_name}</div><div class="q-pch">${q.patient_id}</div></td>
+      <td><span class="ch-${q.channel}">${q.channel.toUpperCase()}</span></td>
+      <td style="color:var(--text2);font-size:11px;">${q.template_id}</td>
+      <td style="font-family:var(--mono);font-size:10px;color:var(--text2);">${new Date(q.send_at).toLocaleString()}</td>
+      <td><span class="q-cd">${cd}</span></td>
+      <td style="font-size:10px;color:${q.chart_note_enabled?'var(--teal2)':'var(--text3)'};">${q.chart_note_enabled?'✓ Yes':'—'}</td>
+      <td><button class="q-x" onclick="cancelQ('${q.id}')">Cancel</button></td>
+    </tr>`;
+  }).join('');
+}
+
+async function cancelQ(id) {
+  try {
+    await api('DELETE', `/api/queue/${id}`);
+    toast('warn', '✕', 'Message cancelled.');
+    loadQueue();
+  } catch (e) {
+    toast('err', '✕', e.message);
+  }
+}
+
+function updQBadge() {
+  const b = document.getElementById('qbadge');
+  const n = queue.filter(q => q.status === 'queued').length;
+  if (n) { b.style.display = 'flex'; b.textContent = n; }
+  else b.style.display = 'none';
+}
+
+// ═══════════════════ LAPSED ═══════════════════
+async function loadLapsed() {
+  document.getElementById('lp-status').textContent = 'Loading from athenahealth…';
+  try {
+    const data = await api('GET', '/api/lapsed');
+    lapsedPatients = data.patients || [];
+    document.getElementById('lp-count').textContent   = lapsedPatients.length;
+    document.getElementById('lp-revenue').textContent  = `$${(lapsedPatients.length * 1455).toLocaleString()}`;
+    document.getElementById('lp-rate').textContent     = lapsedPatients.length ? '—' : '—';
+    document.getElementById('lp-status').textContent   = `${lapsedPatients.length} lapsed patients ${data.cached ? '(cached)' : 'loaded live'}`;
+    renderLapsed(lapsedPatients);
+  } catch (e) {
+    document.getElementById('lp-status').textContent = `Error: ${e.message}`;
+    toast('err', '✕', `Lapsed patients failed: ${e.message}`);
+  }
+}
+
+function renderLapsed(list) {
+  document.getElementById('lp-grid').innerHTML = list.map(p => {
+    const noContact = !p.mobile_phone && !p.email;
+    const isRe = p.reengagement_status === 'contacted' || p.reengagement_status === 'booked';
+    return `<div class="lp-card">
+      <div style="display:flex;align-items:flex-start;gap:12px;margin-bottom:12px;">
+        <div class="ns-ava">${(p.patient_name||'?')[0]}${(p.patient_name||'??')[1]||''}</div>
+        <div style="flex:1;">
+          <div class="lp-name">${p.patient_name}</div>
+          <div class="lp-sub">${p.patient_id}</div>
+        </div>
+        <div class="lp-gap-badge">⏱ ${p.months_lapsed}mo</div>
+      </div>
+      <div class="lp-detail-row">
+        <div class="lp-detail"><div class="lp-dlbl">Last Visit</div><div class="lp-dval">${p.last_visit_date || '—'}</div></div>
+        <div class="lp-detail"><div class="lp-dlbl">Phone</div><div class="lp-dval">${p.mobile_phone || '—'}</div></div>
+      </div>
+      <div style="display:flex;gap:6px;">
+        ${isRe
+          ? `<div style="flex:1;text-align:center;font-size:11px;color:var(--teal2);padding:8px;background:rgba(11,139,124,.08);border-radius:7px;border:1px solid rgba(11,139,124,.2);">✓ Re-engagement sent</div>`
+          : noContact
+          ? `<div style="flex:1;text-align:center;font-size:10px;color:var(--text3);padding:8px;background:var(--ink3);border-radius:7px;border:1px solid var(--border);">No contact info</div>`
+          : `<button class="btn-re" onclick="reengage('${p.patient_id}','sms')">📱 SMS</button>
+             <button class="btn-re btn-re-em" onclick="reengage('${p.patient_id}','email')">✉ Email</button>`
+        }
+      </div>
+    </div>`;
+  }).join('');
+}
+
+async function reengage(patientId, channel) {
+  try {
+    await api('POST', '/api/lapsed/reengage', { patientId, channel, templateId: 'warm' });
+    toast('ok', '🔄', `Re-engagement ${channel.toUpperCase()} sent.`);
+    loadLapsed();
+  } catch (e) {
+    toast('err', '✕', e.message);
+  }
+}
+
+async function bulkReengage() {
+  const eligible = lapsedPatients.filter(p =>
+    (p.mobile_phone || p.email) &&
+    p.reengagement_status === 'not_contacted'
+  );
+  if (!eligible.length) { toast('warn', '⚠', 'No eligible patients to re-engage.'); return; }
+
+  try {
+    const ids = eligible.map(p => p.patient_id);
+    const res = await api('POST', '/api/lapsed/reengage/bulk', { patientIds: ids, channel: 'sms', templateId: 'warm' });
+    toast('ok', '⚡', `Bulk re-engagement sent to ${res.sent} patients.`);
+    loadLapsed();
+  } catch (e) {
+    toast('err', '✕', e.message);
+  }
+}
+
+// ═══════════════════ NO-SHOW ═══════════════════
+async function loadNoShow() {
+  try {
+    const [slotsData, wlData] = await Promise.all([
+      api('GET', '/api/noshow/slots'),
+      api('GET', '/api/noshow/waitlist'),
+    ]);
+
+    const slots   = slotsData.slots   || [];
+    const wl      = wlData.waitlist   || [];
+
+    document.getElementById('ns-slots-count').textContent = slots.length;
+    document.getElementById('ns-revenue').textContent     = `$${(slots.length * 310).toLocaleString()}`;
+    document.getElementById('ns-wl-count').textContent    = wl.length;
+    document.getElementById('ns-wl-label').textContent    = `${wl.length} patients`;
+
+    // Slots
+    document.getElementById('ns-slots-body').innerHTML = slots.length
+      ? slots.map(s => `<div class="ns-row">
+          <div style="flex:1;">
+            <div class="ns-pname">${s.starttime} · ${s.providerid ? `Provider ${s.providerid}` : 'Unknown'}</div>
+            <div class="ns-ptime">${s.duration}min · ${s.appointmenttype || 'Office Visit'}</div>
+          </div>
+          ${filledSlots.has(s.appointmentid)
+            ? `<span class="ns-filled">✓ FILLED</span>`
+            : `<button class="ns-fill-btn" onclick="fillSlot('${s.appointmentid}')">Fill Slot</button>`
+          }
+        </div>`).join('')
+      : `<div style="padding:24px;text-align:center;color:var(--text3);font-size:11px;">No open slots today.</div>`;
+
+    // Waitlist
+    document.getElementById('ns-wl-body').innerHTML = wl.length
+      ? wl.map((w, i) => `<div class="ns-row">
+          <div class="wl-pos">${i+1}</div>
+          <div class="ns-ava">${(w.patientid||'?')[0]}</div>
+          <div style="flex:1;">
+            <div class="ns-pname">Patient ${w.patientid}</div>
+            <div class="ns-ptime">${w.departmentid ? `Dept ${w.departmentid}` : 'Any'}</div>
+          </div>
+          ${notifiedWL.has(w.patientid)
+            ? `<span class="wl-notified">✓ NOTIFIED</span>`
+            : `<button class="wl-notify" onclick="notifyWL('${w.patientid}')">Notify</button>`
+          }
+        </div>`).join('')
+      : `<div style="padding:24px;text-align:center;color:var(--text3);font-size:11px;">Waitlist empty.</div>`;
+
+  } catch (e) {
+    toast('err', '✕', `No-show data failed: ${e.message}`);
+  }
+}
+
+function fillSlot(id) {
+  filledSlots.add(id);
+  toast('ok', '📅', 'Slot marked filled.');
+  loadNoShow();
+}
+
+async function notifyWL(patientId) {
+  try {
+    await api('POST', '/api/noshow/notify', { patientId, slotTime: 'available slot today' });
+    notifiedWL.add(patientId);
+    toast('ok', '📱', 'Waitlist patient notified.');
+    loadNoShow();
+  } catch (e) {
+    toast('err', '✕', e.message);
+  }
+}
+
+async function notifyAll() {
+  toast('info', '⚡', 'Notifying all waitlist patients…');
+  loadNoShow();
+}
+
+// ═══════════════════ ANALYTICS ═══════════════════
+async function loadAnalytics() {
+  try {
+    const data = await api('GET', '/api/analytics/summary');
+    const kpis = data.kpis || {};
+    document.getElementById('an-sent').textContent   = kpis.total_sent   || 0;
+    document.getElementById('an-sms').textContent    = kpis.sms_sent     || 0;
+    document.getElementById('an-email').textContent  = kpis.email_sent   || 0;
+    document.getElementById('an-failed').textContent = kpis.total_failed || 0;
+
+    // Bar chart from daily data
+    const daily = data.daily || [];
+    if (daily.length) {
+      const max = Math.max(...daily.map(d => parseInt(d.sent) + parseInt(d.queued)), 1);
+      document.getElementById('bar-chart').innerHTML = daily.map(d => {
+        const total = parseInt(d.sent) + parseInt(d.queued);
+        return `<div class="bar-col">
+          <div class="bar bar-a" style="height:${Math.round((total/max)*84)}px;"></div>
+          <div class="bar-lbl">${new Date(d.date).toLocaleDateString([],{weekday:'short'})}</div>
+        </div>`;
+      }).join('');
+    }
+
+    // Provider breakdown
+    const provs = data.providers || [];
+    document.getElementById('an-providers').innerHTML = provs.length
+      ? provs.map(p => `<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);">
+          <div style="font-size:12px;flex:1;color:var(--text2);">Provider ${p.provider_id}</div>
+          <div style="font-family:var(--mono);font-size:10px;color:var(--gold2);">${p.sent}/${p.total} sent</div>
+        </div>`).join('')
+      : `<div style="color:var(--text3);font-size:11px;padding:12px 0;">No provider data yet.</div>`;
+
+    document.getElementById('an-status').innerHTML = `
+      <div style="padding:12px 0;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;font-size:12px;">
+        <span style="color:var(--teal2);">✓ Sent</span><span style="font-family:var(--mono);">${kpis.total_sent||0}</span>
+      </div>
+      <div style="padding:12px 0;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;font-size:12px;">
+        <span style="color:var(--gold2);">⏱ Queued</span><span style="font-family:var(--mono);">${kpis.total_queued||0}</span>
+      </div>
+      <div style="padding:12px 0;display:flex;justify-content:space-between;font-size:12px;">
+        <span style="color:#E07080;">✕ Failed</span><span style="font-family:var(--mono);">${kpis.total_failed||0}</span>
+      </div>`;
+  } catch (e) {
+    console.warn('Analytics failed:', e.message);
+  }
+}
+
+// ═══════════════════ SETTINGS ═══════════════════
+async function testAthena() {
+  const c = document.getElementById('ath-conn');
+  const l = document.getElementById('ath-conn-label');
+  c.className = 'st-conn off';
+  l.textContent = 'Testing…';
+  try {
+    const data = await api('GET', '/api/athena/status');
+    if (data.connected) {
+      c.className = 'st-conn';
+      l.textContent = `Connected · ${data.environment}`;
+      toast('ok', '⚡', 'athenahealth connection verified.');
+    } else {
+      c.className = 'st-conn off';
+      l.textContent = 'Disconnected';
+      toast('err', '✕', 'Connection failed.');
+    }
+  } catch (e) {
+    c.className = 'st-conn off';
+    l.textContent = 'Error';
+    toast('err', '✕', e.message);
+  }
+}
+
+async function saveSettings() {
+  try {
+    await api('PUT', '/api/settings', {
+      googleReviewLink: document.getElementById('s-glink').value,
+    });
+    toast('ok', '✓', 'Settings saved.');
+  } catch (e) {
+    toast('err', '✕', e.message);
+  }
+}
+
+// ═══════════════════ VIEW SWITCHING ═══════════════════
+function switchView(el, name) {
+  document.querySelectorAll('.tn').forEach(e => e.classList.remove('active'));
+  el.classList.add('active');
+  document.querySelectorAll('.view').forEach(e => e.classList.remove('on'));
+  document.getElementById('view-' + name).classList.add('on');
+
+  if (name === 'queue')     loadQueue();
+  if (name === 'lapsed')    loadLapsed();
+  if (name === 'noshow')    loadNoShow();
+  if (name === 'analytics') loadAnalytics();
+  if (name === 'settings')  { checkAthenaStatus(); loadSettings(); }
+}
+
+// ═══════════════════ TOAST ═══════════════════
+function toast(type, icon, msg) {
+  const w = document.getElementById('toasts');
+  const t = document.createElement('div');
+  t.className = `toast ${type}`;
+  t.innerHTML = `<span>${icon}</span><span>${msg}</span>`;
+  w.appendChild(t);
+  setTimeout(() => { t.style.transition='opacity .25s'; t.style.opacity='0'; setTimeout(() => t.remove(), 250); }, 4000);
+}
+</script>
+</body>
+</html>
