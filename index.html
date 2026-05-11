@@ -611,11 +611,11 @@ let filledSlots = new Set();
 
 // ═══════════════════ API CLIENT ═══════════════════
 async function api(method, path, body = null) {
-  const currentToken = localStorage.getItem('rr_token') || token;`n  const opts = {
+  const opts = {
     method,
     headers: {
       'Content-Type': 'application/json',
-      ...(currentToken ? { Authorization: `Bearer ${token}` } : {}),
+      ...(localStorage.getItem('rr_token') ? { Authorization: `Bearer ${localStorage.getItem('rr_token')}` } : {}),
     },
   };
   if (body) opts.body = JSON.stringify(body);
@@ -1258,4 +1258,6 @@ function toast(type, icon, msg) {
 </script>
 </body>
 </html>
+
+
 
