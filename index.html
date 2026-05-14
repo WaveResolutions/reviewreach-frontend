@@ -608,6 +608,22 @@ input.fi::placeholder{color:var(--text3);}
             </div>
           </div>
           <div class="st-card">
+            <div class="st-head"><div class="st-htitle">🎨 Patient Form Branding</div></div>
+            <div class="st-body">
+              <div style="font-size:12px;color:var(--text2);margin-bottom:14px;">This is what patients see on the appointment request form — use your practice name and logo so they recognize the page.</div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
+                <div><div class="fi-lbl">Display Name on Form</div><input class="fi" id="s-display-name" placeholder="ILIP Care"></div>
+                <div><div class="fi-lbl">Logo URL</div><input class="fi" id="s-logo-url" placeholder="https://yoursite.com/logo.png"></div>
+              </div>
+              <div style="margin-bottom:12px;"><div class="fi-lbl">Note Shown to Patients (optional)</div><input class="fi" id="s-form-note" placeholder="Allow 24 hours for a response. For urgent matters call (555) 000-0000"></div>
+              <div id="logo-preview" style="margin-bottom:12px;display:none;">
+                <div class="fi-lbl">Preview</div>
+                <img id="logo-preview-img" style="height:48px;border-radius:8px;border:1px solid var(--border);padding:4px;" alt="Logo preview">
+              </div>
+              <button class="btn-sm" onclick="saveBranding()">Save Branding</button>
+            </div>
+          </div>
+          <div class="st-card">
             <div class="st-head"><div class="st-htitle">👨‍⚕️ Physician Roster</div></div>
             <div class="st-body">
               <div style="font-size:12px;color:var(--text2);margin-bottom:14px;">These physicians appear in the patient appointment request form. Add new doctors when they join; remove when they leave.</div>
@@ -845,6 +861,13 @@ async function loadSettings() {
     document.getElementById('s-env').value  = s.athena_environment || '';
     document.getElementById('s-glink').value = s.google_review_link || '';
     document.getElementById('s-pname').value = s.name || '';
+    document.getElementById('s-display-name').value = s.display_name || '';
+    document.getElementById('s-logo-url').value = s.logo_url || '';
+    document.getElementById('s-form-note').value = s.form_note || '';
+    if (s.logo_url) {
+      document.getElementById('logo-preview-img').src = s.logo_url;
+      document.getElementById('logo-preview').style.display = 'block';
+    }
 
     const mods = [
       { key: 'module_reviews',    label: '★ Review Outreach',              val: s.module_reviews },
@@ -1328,6 +1351,27 @@ async function saveSettings() {
       googleReviewLink: document.getElementById('s-glink').value,
     });
     toast('ok', '✓', 'Settings saved.');
+  } catch (e) {
+    toast('err', '✕', e.message);
+  }
+}
+
+async function saveBranding() {
+  try {
+    const logoUrl = document.getElementById('s-logo-url').value.trim();
+    await api('PUT', '/api/settings', {
+      displayName: document.getElementById('s-display-name').value.trim() || null,
+      logoUrl:     logoUrl || null,
+      formNote:    document.getElementById('s-form-note').value.trim() || null,
+    });
+    // Show live preview if URL provided
+    if (logoUrl) {
+      document.getElementById('logo-preview-img').src = logoUrl;
+      document.getElementById('logo-preview').style.display = 'block';
+    } else {
+      document.getElementById('logo-preview').style.display = 'none';
+    }
+    toast('ok', '✓', 'Branding saved — patients will see the updated form immediately.');
   } catch (e) {
     toast('err', '✕', e.message);
   }
