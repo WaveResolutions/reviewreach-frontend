@@ -414,6 +414,7 @@ input.fi::placeholder{color:var(--text3);}
       <div class="tn" onclick="switchView(this,'lapsed')">Lapsed Patients</div>
       <div class="tn" onclick="switchView(this,'noshow')">No-Show Recovery</div>
       <div class="tn" onclick="switchView(this,'analytics')">Analytics</div>
+      <div class="tn" onclick="switchView(this,'requests')">Requests <span id="req-badge" style="display:none;background:#B53045;color:#fff;font-size:9px;font-weight:700;border-radius:10px;padding:1px 6px;margin-left:4px;">0</span></div>
       <div class="tn" onclick="switchView(this,'settings')">Settings</div>
     </nav>
     <div class="topbar-r">
@@ -560,6 +561,26 @@ input.fi::placeholder{color:var(--text3);}
         </div>
       </div>
 
+      <!-- REQUESTS -->
+      <div class="view" id="view-requests">
+        <div class="st-scroll">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
+            <div class="view-title">Appointment Requests</div>
+            <div style="display:flex;gap:8px;">
+              <select id="req-filter" onchange="loadRequests()" style="font-size:12px;padding:6px 10px;border:1px solid var(--border);border-radius:7px;background:var(--ink2);color:var(--text);outline:none;">
+                <option value="">All</option>
+                <option value="new">New</option>
+                <option value="contacted">Contacted</option>
+                <option value="scheduled">Scheduled</option>
+                <option value="cancelled">Cancelled</option>
+              </select>
+              <button class="btn-sm" onclick="loadRequests()">↻ Refresh</button>
+            </div>
+          </div>
+          <div id="req-list"><div style="color:var(--text3);font-size:13px;">Loading…</div></div>
+        </div>
+      </div>
+
       <!-- SETTINGS -->
       <div class="view" id="view-settings">
         <div class="st-scroll">
@@ -584,6 +605,22 @@ input.fi::placeholder{color:var(--text3);}
               <div><div class="fi-lbl">Direct Review Link</div><input class="fi" id="s-glink" placeholder="https://g.page/r/YOUR_PLACE_ID/review"></div>
               <div><div class="fi-lbl">Practice Name</div><input class="fi" id="s-pname" placeholder="Westside Medical Group"></div>
               <button class="btn-sm" onclick="saveSettings()">Save Settings</button>
+            </div>
+          </div>
+          <div class="st-card">
+            <div class="st-head"><div class="st-htitle">👨‍⚕️ Physician Roster</div></div>
+            <div class="st-body">
+              <div style="font-size:12px;color:var(--text2);margin-bottom:14px;">These physicians appear in the patient appointment request form. Add new doctors when they join; remove when they leave.</div>
+              <div id="physician-list" style="margin-bottom:16px;display:flex;flex-direction:column;gap:8px;"></div>
+              <div style="display:flex;gap:8px;">
+                <input class="fi" id="ph-name" placeholder="Dr. Sarah Johnson" style="flex:1;">
+                <input class="fi" id="ph-spec" placeholder="Specialty (optional)" style="flex:1;">
+                <button class="btn-sm" onclick="addPhysician()" style="white-space:nowrap;">+ Add</button>
+              </div>
+              <div style="margin-top:16px;padding:12px;background:var(--ink3);border-radius:8px;font-size:11px;color:var(--text3);line-height:1.6;">
+                📋 <strong>Patient form URL:</strong><br>
+                <span id="form-url" style="font-family:monospace;word-break:break-all;color:var(--text2);">Loading…</span>
+              </div>
             </div>
           </div>
           <div class="st-card">
@@ -1296,6 +1333,132 @@ async function saveSettings() {
   }
 }
 
+// ═══════════════════ PHYSICIAN ROSTER ═══════════════════
+let physicians = [];
+
+async function loadPhysicians() {
+  try {
+    const data = await api('GET', '/api/settings/physicians');
+    physicians = data.physicians || [];
+    renderPhysicians();
+    // Show the form URL for this practice
+    const slug = user?.practiceSlug || '';
+    const formBase = window.location.origin + '/request.html';
+    document.getElementById('form-url').textContent = `${formBase}?p=${slug}`;
+  } catch (e) {
+    console.warn('Physicians load failed:', e.message);
+  }
+}
+
+function renderPhysicians() {
+  const el = document.getElementById('physician-list');
+  if (!physicians.length) {
+    el.innerHTML = '<div style="font-size:12px;color:var(--text3);">No physicians added yet.</div>';
+    return;
+  }
+  el.innerHTML = physicians.map(p => `
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:var(--ink3);border-radius:8px;border:1px solid var(--border);">
+      <div>
+        <div style="font-size:13px;font-weight:600;color:var(--text);">${p.name}</div>
+        ${p.specialty ? `<div style="font-size:11px;color:var(--text3);">${p.specialty}</div>` : ''}
+      </div>
+      <button onclick="removePhysician('${p.id}')" style="background:none;border:1px solid var(--border2);border-radius:6px;padding:4px 10px;font-size:11px;color:var(--text3);cursor:pointer;">Remove</button>
+    </div>
+  `).join('');
+}
+
+async function addPhysician() {
+  const name = document.getElementById('ph-name').value.trim();
+  const spec = document.getElementById('ph-spec').value.trim();
+  if (!name) { toast('err', '✕', 'Enter a physician name.'); return; }
+  try {
+    const data = await api('POST', '/api/settings/physicians', { name, specialty: spec || null });
+    physicians.push(data.physician);
+    renderPhysicians();
+    document.getElementById('ph-name').value = '';
+    document.getElementById('ph-spec').value = '';
+    toast('ok', '✓', `${name} added to roster.`);
+  } catch (e) {
+    toast('err', '✕', e.message);
+  }
+}
+
+async function removePhysician(id) {
+  try {
+    await api('DELETE', `/api/settings/physicians/${id}`);
+    physicians = physicians.filter(p => p.id !== id);
+    renderPhysicians();
+    toast('ok', '✓', 'Physician removed.');
+  } catch (e) {
+    toast('err', '✕', e.message);
+  }
+}
+
+// ═══════════════════ APPOINTMENT REQUESTS ═══════════════════
+async function loadRequests() {
+  const status = document.getElementById('req-filter')?.value || '';
+  const el = document.getElementById('req-list');
+  el.innerHTML = '<div style="color:var(--text3);font-size:13px;">Loading…</div>';
+  try {
+    const data = await api('GET', `/api/requests${status ? '?status=' + status : ''}`);
+    const reqs = data.requests || [];
+
+    // Update badge for new requests
+    const newCount = reqs.filter(r => r.status === 'new').length;
+    const badge = document.getElementById('req-badge');
+    if (newCount > 0) { badge.textContent = newCount; badge.style.display = 'inline'; }
+    else { badge.style.display = 'none'; }
+
+    if (!reqs.length) {
+      el.innerHTML = '<div style="color:var(--text3);font-size:13px;">No requests found.</div>';
+      return;
+    }
+
+    const statusColors = { new: '#1A6FC4', contacted: '#9A6B1F', scheduled: '#0A7A6C', cancelled: '#8A97B4' };
+    el.innerHTML = reqs.map(r => `
+      <div style="background:var(--ink2);border:1px solid var(--border);border-radius:12px;padding:16px 18px;margin-bottom:10px;">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:10px;">
+          <div>
+            <div style="font-size:14px;font-weight:600;color:var(--text);">${r.patient_name}</div>
+            <div style="font-size:12px;color:var(--text2);margin-top:2px;">
+              ${r.patient_phone ? `📞 ${r.patient_phone}` : ''}
+              ${r.patient_phone && r.patient_email ? ' · ' : ''}
+              ${r.patient_email ? `✉ ${r.patient_email}` : ''}
+            </div>
+          </div>
+          <span style="font-size:10px;font-weight:700;padding:3px 10px;border-radius:10px;background:${statusColors[r.status]}22;color:${statusColors[r.status]};white-space:nowrap;text-transform:uppercase;">${r.status}</span>
+        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:8px;font-size:11px;color:var(--text3);margin-bottom:12px;">
+          ${r.preferred_physician_name ? `<span>👨‍⚕️ ${r.preferred_physician_name}</span>` : ''}
+          ${r.preferred_date ? `<span>📅 ${new Date(r.preferred_date).toLocaleDateString()}</span>` : ''}
+          ${r.preferred_time_slot && r.preferred_time_slot !== 'any' ? `<span>🕐 ${r.preferred_time_slot}</span>` : ''}
+          <span>${r.patient_type === 'new' ? '🆕 New patient' : '↩ Existing patient'}</span>
+          ${r.sms_consent ? '<span>✓ SMS consent</span>' : ''}
+          <span style="margin-left:auto;">${new Date(r.created_at).toLocaleDateString()} ${new Date(r.created_at).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}</span>
+        </div>
+        ${r.reason ? `<div style="font-size:12px;color:var(--text2);background:var(--ink3);border-radius:7px;padding:8px 12px;margin-bottom:12px;">${r.reason}</div>` : ''}
+        <div style="display:flex;gap:6px;flex-wrap:wrap;">
+          ${r.status !== 'contacted'  ? `<button onclick="setReqStatus('${r.id}','contacted')"  style="font-size:11px;padding:5px 12px;border-radius:6px;border:1px solid var(--border2);background:var(--ink3);color:var(--text2);cursor:pointer;">Mark Contacted</button>` : ''}
+          ${r.status !== 'scheduled'  ? `<button onclick="setReqStatus('${r.id}','scheduled')"  style="font-size:11px;padding:5px 12px;border-radius:6px;border:1px solid rgba(10,122,108,.3);background:rgba(10,122,108,.08);color:var(--teal2);cursor:pointer;">Mark Scheduled</button>` : ''}
+          ${r.status !== 'cancelled'  ? `<button onclick="setReqStatus('${r.id}','cancelled')"  style="font-size:11px;padding:5px 12px;border-radius:6px;border:1px solid var(--border);background:none;color:var(--text3);cursor:pointer;">Cancel</button>` : ''}
+        </div>
+      </div>
+    `).join('');
+  } catch (e) {
+    el.innerHTML = `<div style="color:var(--rose);font-size:13px;">${e.message}</div>`;
+  }
+}
+
+async function setReqStatus(id, status) {
+  try {
+    await api('PUT', `/api/requests/${id}/status`, { status });
+    toast('ok', '✓', `Request marked as ${status}.`);
+    loadRequests();
+  } catch (e) {
+    toast('err', '✕', e.message);
+  }
+}
+
 // ═══════════════════ VIEW SWITCHING ═══════════════════
 function switchView(el, name) {
   document.querySelectorAll('.tn').forEach(e => e.classList.remove('active'));
@@ -1307,7 +1470,8 @@ function switchView(el, name) {
   if (name === 'lapsed')    loadLapsed();
   if (name === 'noshow')    loadNoShow();
   if (name === 'analytics') loadAnalytics();
-  if (name === 'settings')  { checkAthenaStatus(); loadSettings(); }
+  if (name === 'requests')  loadRequests();
+  if (name === 'settings')  { checkAthenaStatus(); loadSettings(); loadPhysicians(); }
 }
 
 // ═══════════════════ TOAST ═══════════════════
