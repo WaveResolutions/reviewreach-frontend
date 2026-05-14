@@ -365,34 +365,46 @@ input.fi::placeholder{color:var(--text3);}
 .toast.err{border-left:3px solid #E07080;}
 @keyframes tin{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:translateY(0);}}
 
+/* ── PATIENT LIST PAGINATION ── */
+.sb-sort{padding:4px 14px 0;display:flex;align-items:center;justify-content:space-between;}
+.sb-sort-label{font-size:9px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);}
+.sb-sort select{font-size:9px;border:1px solid var(--border);border-radius:4px;background:var(--ink2);color:var(--text2);padding:2px 18px 2px 5px;outline:none;cursor:pointer;font-family:var(--sans);appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='5' viewBox='0 0 8 5'%3E%3Cpath d='M1 1l3 3 3-3' stroke='%238A97B4' stroke-width='1.2' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 4px center;}
+.sb-page{display:none;align-items:center;justify-content:center;gap:8px;padding:6px 14px;border-top:1px solid var(--border);flex-shrink:0;}
+.sb-page-btn{font-size:13px;font-weight:600;color:var(--text3);background:var(--ink3);border:1px solid var(--border);border-radius:5px;width:26px;height:22px;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .12s;line-height:1;}
+.sb-page-btn:hover:not(:disabled){color:var(--text);border-color:var(--border2);}
+.sb-page-btn:disabled{opacity:.35;cursor:not-allowed;}
+.sb-page-info{font-family:var(--mono);font-size:9px;color:var(--text3);min-width:36px;text-align:center;}
+
 /* ── MOBILE RESPONSIVE ── */
 @media (max-width: 768px) {
-  /* Topbar */
-  .topbar{padding:0 12px;height:52px;}
-  .logo{font-size:15px;margin-right:12px;}
+  /* Topbar — prevent right side from being cut off */
+  .topbar{padding:0 10px;height:52px;}
+  .logo{font-size:15px;margin-right:8px;}
   .logo-gem{width:24px;height:24px;}
+  .topbar-r{flex-shrink:0;gap:6px;}
   .topbar-r .api-pill{display:none;}
-  .top-nav{overflow:visible;}
+  /* Nav scrolls horizontally so sign-out is never hidden */
+  .top-nav{flex:1;min-width:0;overflow-x:auto;overflow-y:hidden;scrollbar-width:none;}
+  .top-nav::-webkit-scrollbar{display:none;}
   .tn-desktop{display:none!important;}
   .tn-more{display:flex!important;}
-  .tn{padding:0 12px;font-size:12px;}
+  .tn{padding:0 11px;font-size:12px;flex-shrink:0;}
   .btn-logout{font-size:11px;padding:4px 8px;white-space:nowrap;}
   .user-pill span{display:none;}
 
   /* Shell: stack sidebar above content */
   .shell{flex-direction:column;}
 
-  /* Sidebar becomes a collapsible top panel */
+  /* Sidebar — allow more height so patients are visible */
   .sidebar{
-    width:100%;height:auto;max-height:260px;
-    border-right:none;border-bottom:1px solid var(--border);
-    flex-shrink:0;
+    width:100%;border-right:none;border-bottom:1px solid var(--border);
+    flex-shrink:0;max-height:48vh;
   }
   .sb-head{padding:10px 12px;}
-  .pscroll{max-height:140px;}
-  .sb-stats{grid-template-columns:repeat(4,1fr);padding:8px 12px;}
-  .sb-stat{padding:6px 8px;}
-  .ssv{font-size:16px;}
+  .pscroll{flex:1;overflow-y:auto;}
+  .sb-stats{grid-template-columns:repeat(4,1fr);padding:6px 10px;}
+  .sb-stat{padding:5px 7px;}
+  .ssv{font-size:15px;}
 
   /* Content area */
   .content{overflow-y:auto;flex:1;}
@@ -428,11 +440,18 @@ input.fi::placeholder{color:var(--text3);}
   .toast{max-width:100%;}
 }
 
+@media (max-width: 400px) {
+  /* Very narrow phones — hide logo text to free space for nav tabs */
+  .logo-text{display:none;}
+  .logo{margin-right:4px;}
+  .tn{padding:0 9px;font-size:11px;}
+  .user-pill{display:none;}
+  .btn-logout{padding:4px 7px;font-size:10px;}
+}
+
 @media (max-width: 480px) {
   .sb-stats{grid-template-columns:repeat(2,1fr);}
   .topbar{height:48px;}
-  .logo{font-size:14px;}
-  .tn{padding:0 9px;font-size:10.5px;}
 }
 
 /* More menu items */
@@ -491,7 +510,7 @@ input.fi::placeholder{color:var(--text3);}
 
   <!-- TOPBAR -->
   <div class="topbar">
-    <div class="logo"><div class="logo-gem"><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16"><circle cx="6" cy="12" r="2.8" fill="white"/><path d="M11.5 7.5C15 9.8 15 14.2 11.5 16.5" stroke="white" stroke-width="2.2" stroke-linecap="round"/><path d="M15.5 4C22 7.5 22 16.5 15.5 20" stroke="white" stroke-width="2.2" stroke-linecap="round" opacity="0.55"/></svg></div>PracticePing</div>
+    <div class="logo"><div class="logo-gem"><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16"><circle cx="6" cy="12" r="2.8" fill="white"/><path d="M11.5 7.5C15 9.8 15 14.2 11.5 16.5" stroke="white" stroke-width="2.2" stroke-linecap="round"/><path d="M15.5 4C22 7.5 22 16.5 15.5 20" stroke="white" stroke-width="2.2" stroke-linecap="round" opacity="0.55"/></svg></div><span class="logo-text">PracticePing</span></div>
     <nav class="top-nav">
       <div class="tn active" onclick="switchView(this,'outreach')">Outreach</div>
       <div class="tn" onclick="switchView(this,'queue')">
@@ -537,9 +556,23 @@ input.fi::placeholder{color:var(--text3);}
           <input type="text" id="psearch" placeholder="Search patient or chart #" oninput="filterP()">
         </div>
       </div>
-      <div class="sb-sec">Today's Schedule <span class="sb-cnt" id="sb-cnt">—</span></div>
+      <div class="sb-sec">
+        <span>Today's Schedule <span class="sb-cnt" id="sb-cnt">—</span></span>
+        <div class="sb-sort">
+          <select id="psort" onchange="sortChanged()" title="Sort patients">
+            <option value="time">Time ↑</option>
+            <option value="name_asc">Name A→Z</option>
+            <option value="name_desc">Name Z→A</option>
+          </select>
+        </div>
+      </div>
       <div class="pscroll" id="plist">
         <div class="loading"><div class="spinner"></div>Loading…</div>
+      </div>
+      <div class="sb-page" id="sb-page">
+        <button class="sb-page-btn" id="sb-prev" onclick="prevPage()" disabled>‹</button>
+        <span class="sb-page-info" id="sb-page-info">1 / 1</span>
+        <button class="sb-page-btn" id="sb-next" onclick="nextPage()" disabled>›</button>
       </div>
       <div class="sb-stats">
         <div class="sb-stat"><div class="ssv" id="ss-t">—</div><div class="ssl">Patients</div></div>
@@ -768,6 +801,12 @@ let lapsedPatients = [];
 let notifiedWL = new Set();
 let filledSlots = new Set();
 
+// Patient list pagination + sort state
+let pPage      = 0;
+const pPageSize = 10;
+let pSort      = 'time';
+let pFiltered  = [];  // current sorted+filtered list
+
 // ═══════════════════ API CLIENT ═══════════════════
 async function api(method, path, body = null) {
   const opts = {
@@ -982,18 +1021,35 @@ async function loadSettings() {
 }
 
 // ═══════════════════ PATIENT LIST ═══════════════════
+function applySort(list) {
+  const s = [...list];
+  if (pSort === 'name_asc')  s.sort((a,b) => (a.lastname+a.firstname).localeCompare(b.lastname+b.firstname));
+  if (pSort === 'name_desc') s.sort((a,b) => (b.lastname+b.firstname).localeCompare(a.lastname+a.firstname));
+  // 'time' keeps API order
+  return s;
+}
+
 function renderPList(list) {
+  pFiltered = applySort(list);
+  const total = pFiltered.length;
+  const totalPages = Math.max(1, Math.ceil(total / pPageSize));
+  if (pPage >= totalPages) pPage = totalPages - 1;
+
+  document.getElementById('sb-cnt').textContent = total;
+
   const el = document.getElementById('plist');
-  document.getElementById('sb-cnt').textContent = list.length;
-  if (!list.length) {
+  if (!total) {
     el.innerHTML = `<div style="padding:20px;text-align:center;color:var(--text3);font-size:11px;">No patients found.</div>`;
+    document.getElementById('sb-page').style.display = 'none';
     return;
   }
-  el.innerHTML = list.map(p => {
-    const status  = sentMap[p.patientid];
-    const isSent  = status === 'sent';
-    const isQ     = status === 'queued';
-    const isSel   = sel && sel.patientid === p.patientid;
+
+  const page = pFiltered.slice(pPage * pPageSize, (pPage + 1) * pPageSize);
+  el.innerHTML = page.map(p => {
+    const status = sentMap[p.patientid];
+    const isSent = status === 'sent';
+    const isQ    = status === 'queued';
+    const isSel  = sel && sel.patientid === p.patientid;
     return `<div class="pc${isSel ? ' sel' : ''}" onclick="selP('${p.patientid}')">
       <div class="pc-ava">${p.firstname[0]}${p.lastname[0]}</div>
       <div class="pc-body">
@@ -1007,24 +1063,51 @@ function renderPList(list) {
       </div>
     </div>`;
   }).join('');
+
+  // Pagination controls
+  const pageEl = document.getElementById('sb-page');
+  if (totalPages > 1) {
+    pageEl.style.display = 'flex';
+    document.getElementById('sb-page-info').textContent = `${pPage + 1} / ${totalPages}`;
+    document.getElementById('sb-prev').disabled = pPage === 0;
+    document.getElementById('sb-next').disabled = pPage >= totalPages - 1;
+  } else {
+    pageEl.style.display = 'none';
+  }
+}
+
+function getCurrentFilter() {
+  const q = document.getElementById('psearch').value.toLowerCase();
+  return schedule.filter(p =>
+    `${p.firstname} ${p.lastname}`.toLowerCase().includes(q) ||
+    p.patientid.includes(q)
+  );
 }
 
 function filterP() {
-  const q = document.getElementById('psearch').value.toLowerCase();
-  renderPList(schedule.filter(p =>
-    `${p.firstname} ${p.lastname}`.toLowerCase().includes(q) ||
-    p.patientid.includes(q)
-  ));
+  pPage = 0;
+  renderPList(getCurrentFilter());
+}
+
+function sortChanged() {
+  pSort = document.getElementById('psort').value;
+  pPage = 0;
+  renderPList(getCurrentFilter());
+}
+
+function prevPage() {
+  if (pPage > 0) { pPage--; renderPList(pFiltered); }
+}
+
+function nextPage() {
+  const totalPages = Math.ceil(pFiltered.length / pPageSize);
+  if (pPage < totalPages - 1) { pPage++; renderPList(pFiltered); }
 }
 
 function selP(id) {
   sel = schedule.find(p => p.patientid === id);
   ti  = 0;
-  const q = document.getElementById('psearch').value.toLowerCase();
-  renderPList(schedule.filter(p =>
-    `${p.firstname} ${p.lastname}`.toLowerCase().includes(q) ||
-    p.patientid.includes(q)
-  ));
+  renderPList(getCurrentFilter());
   document.getElementById('cx-empty').style.display = 'none';
   document.getElementById('cx-area').style.display  = 'block';
   renderCX();
