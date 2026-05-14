@@ -26,6 +26,7 @@
   --serif:    'Playfair Display', Georgia, serif;
   --sans:     'Sora', sans-serif;
   --mono:     'IBM Plex Mono', monospace;
+  font-size:  15px;
 }
 *{box-sizing:border-box;margin:0;padding:0;}
 html,body{height:100%;overflow:hidden;}
@@ -95,7 +96,7 @@ body{font-family:var(--sans);background:var(--ink);color:var(--text);font-size:1
 .top-nav{display:flex;height:100%;}
 .tn{
   height:100%;display:flex;align-items:center;padding:0 16px;
-  font-size:12px;font-weight:500;color:var(--text3);cursor:pointer;
+  font-size:13px;font-weight:500;color:var(--text3);cursor:pointer;
   border-bottom:2px solid transparent;transition:all .15s;white-space:nowrap;
   position:relative;
 }
@@ -371,10 +372,11 @@ input.fi::placeholder{color:var(--text3);}
   .logo{font-size:15px;margin-right:12px;}
   .logo-gem{width:24px;height:24px;}
   .topbar-r .api-pill{display:none;}
-  .top-nav{overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;}
-  .top-nav::-webkit-scrollbar{display:none;}
-  .tn{padding:0 11px;font-size:11px;}
-  .btn-logout{font-size:10px;padding:4px 8px;white-space:nowrap;}
+  .top-nav{overflow:visible;}
+  .tn-desktop{display:none!important;}
+  .tn-more{display:flex!important;}
+  .tn{padding:0 12px;font-size:12px;}
+  .btn-logout{font-size:11px;padding:4px 8px;white-space:nowrap;}
   .user-pill span{display:none;}
 
   /* Shell: stack sidebar above content */
@@ -433,6 +435,14 @@ input.fi::placeholder{color:var(--text3);}
   .tn{padding:0 9px;font-size:10.5px;}
 }
 
+/* More menu items */
+.more-item{padding:13px 20px;font-size:14px;color:var(--text2);cursor:pointer;border-bottom:1px solid var(--border);}
+.more-item:last-child{border-bottom:none;}
+.more-item:hover{background:var(--ink3);color:var(--text);}
+.more-item.active{color:var(--gold);font-weight:600;}
+/* Hide More button on desktop */
+.tn-more{display:none;}
+
 /* Mobile detail view — hide sidebar, show detail full screen */
 @media (max-width: 768px) {
   .shell.mobile-detail .sidebar{display:none;}
@@ -488,12 +498,20 @@ input.fi::placeholder{color:var(--text3);}
         Queue
         <span class="tn-badge" id="qbadge" style="display:none;"></span>
       </div>
-      <div class="tn" onclick="switchView(this,'lapsed')">Lapsed Patients</div>
-      <div class="tn" onclick="switchView(this,'noshow')">No-Show Recovery</div>
-      <div class="tn" onclick="switchView(this,'analytics')">Analytics</div>
       <div class="tn" onclick="switchView(this,'requests')">Requests <span id="req-badge" style="display:none;background:#B53045;color:#fff;font-size:9px;font-weight:700;border-radius:10px;padding:1px 6px;margin-left:4px;">0</span></div>
-      <div class="tn" onclick="switchView(this,'settings')">Settings</div>
+      <div class="tn tn-desktop" onclick="switchView(this,'lapsed')">Lapsed Patients</div>
+      <div class="tn tn-desktop" onclick="switchView(this,'noshow')">No-Show Recovery</div>
+      <div class="tn tn-desktop" onclick="switchView(this,'analytics')">Analytics</div>
+      <div class="tn tn-desktop" onclick="switchView(this,'settings')">Settings</div>
+      <!-- Mobile More menu -->
+      <div class="tn tn-more" id="more-btn" onclick="toggleMoreMenu()">More ···</div>
     </nav>
+    <div id="more-menu" style="display:none;position:fixed;top:52px;right:0;background:var(--ink2);border:1px solid var(--border);border-radius:0 0 12px 12px;box-shadow:0 8px 24px rgba(0,0,0,.1);z-index:200;min-width:180px;">
+      <div class="more-item" onclick="switchViewMore('lapsed','Lapsed Patients')">Lapsed Patients</div>
+      <div class="more-item" onclick="switchViewMore('noshow','No-Show Recovery')">No-Show Recovery</div>
+      <div class="more-item" onclick="switchViewMore('analytics','Analytics')">Analytics</div>
+      <div class="more-item" onclick="switchViewMore('settings','Settings')">Settings</div>
+    </div>
     <div class="topbar-r">
       <div class="api-pill" id="api-status-pill">
         <div class="api-dot"></div>
@@ -1016,6 +1034,35 @@ function selP(id) {
     document.getElementById('cx-area').scrollTop = 0;
   }
 }
+
+function toggleMoreMenu() {
+  const m = document.getElementById('more-menu');
+  m.style.display = m.style.display === 'none' ? 'block' : 'none';
+}
+
+function switchViewMore(name, label) {
+  document.getElementById('more-menu').style.display = 'none';
+  // Update More button label to show active section
+  document.getElementById('more-btn').textContent = label + ' ···';
+  // Deactivate all main nav tabs
+  document.querySelectorAll('.tn').forEach(e => e.classList.remove('active'));
+  document.getElementById('more-btn').classList.add('active');
+  // Switch view
+  document.querySelectorAll('.view').forEach(e => e.classList.remove('on'));
+  document.getElementById('view-' + name).classList.add('on');
+  if (name === 'lapsed')    loadLapsed();
+  if (name === 'noshow')    loadNoShow();
+  if (name === 'analytics') loadAnalytics();
+  if (name === 'settings')  { checkAthenaStatus(); loadSettings(); loadPhysicians(); }
+}
+
+// Close more menu when tapping outside
+document.addEventListener('click', e => {
+  if (!e.target.closest('#more-btn') && !e.target.closest('#more-menu')) {
+    const m = document.getElementById('more-menu');
+    if (m) m.style.display = 'none';
+  }
+});
 
 function mobileBack() {
   document.querySelector('.shell').classList.remove('mobile-detail');
@@ -1595,6 +1642,8 @@ async function setReqStatus(id, status) {
 
 // ═══════════════════ VIEW SWITCHING ═══════════════════
 function switchView(el, name) {
+  document.getElementById('more-menu').style.display = 'none';
+  document.getElementById('more-btn').textContent = 'More ···';
   document.querySelectorAll('.tn').forEach(e => e.classList.remove('active'));
   el.classList.add('active');
   document.querySelectorAll('.view').forEach(e => e.classList.remove('on'));
