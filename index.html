@@ -1927,12 +1927,13 @@ async function sendAvailability() {
   btn.disabled = true;
   btn.textContent = 'Sending…';
   try {
-    await api('POST', `/api/requests/${avReqId}/send-availability`, {
+    const result = await api('POST', `/api/requests/${avReqId}/send-availability`, {
       channel: avChannel, message,
       ...(avChannel === 'email' ? { subject } : {}),
     });
     closeAvModal();
-    toast('ok', '📤', `Available slots sent via ${avChannel.toUpperCase()} — request marked as Contacted.`);
+    const demoNote = result.demo ? ' (simulated — credentials not yet configured)' : '';
+    toast('ok', '📤', `Available slots sent via ${avChannel.toUpperCase()}${demoNote} — request marked as Contacted.`);
     loadRequests();
   } catch (e) {
     errEl.textContent = e.message;
