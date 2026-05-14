@@ -462,6 +462,9 @@ input.fi::placeholder{color:var(--text3);}
 /* Hide More button on desktop */
 .tn-more{display:none;}
 
+/* Sidebar hidden for non-Outreach views */
+.shell.sidebar-hidden .sidebar{display:none!important;}
+
 /* Mobile detail view — hide sidebar, show detail full screen */
 @media (max-width: 768px) {
   .shell.mobile-detail .sidebar{display:none;}
@@ -512,24 +515,28 @@ input.fi::placeholder{color:var(--text3);}
   <div class="topbar">
     <div class="logo"><div class="logo-gem"><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16"><circle cx="6" cy="12" r="2.8" fill="white"/><path d="M11.5 7.5C15 9.8 15 14.2 11.5 16.5" stroke="white" stroke-width="2.2" stroke-linecap="round"/><path d="M15.5 4C22 7.5 22 16.5 15.5 20" stroke="white" stroke-width="2.2" stroke-linecap="round" opacity="0.55"/></svg></div><span class="logo-text">PracticePing</span></div>
     <nav class="top-nav">
-      <div class="tn active" onclick="switchView(this,'outreach')">Outreach</div>
-      <div class="tn" onclick="switchView(this,'queue')">
+      <div class="tn tn-desktop active" onclick="switchView(this,'outreach')">Outreach</div>
+      <div class="tn tn-desktop" onclick="switchView(this,'queue')">
         Queue
         <span class="tn-badge" id="qbadge" style="display:none;"></span>
       </div>
-      <div class="tn" onclick="switchView(this,'requests')">Requests <span id="req-badge" style="display:none;background:#B53045;color:#fff;font-size:9px;font-weight:700;border-radius:10px;padding:1px 6px;margin-left:4px;">0</span></div>
+      <div class="tn tn-desktop" onclick="switchView(this,'requests')">Requests <span id="req-badge" style="display:none;background:#B53045;color:#fff;font-size:9px;font-weight:700;border-radius:10px;padding:1px 6px;margin-left:4px;">0</span></div>
       <div class="tn tn-desktop" onclick="switchView(this,'lapsed')">Lapsed Patients</div>
       <div class="tn tn-desktop" onclick="switchView(this,'noshow')">No-Show Recovery</div>
       <div class="tn tn-desktop" onclick="switchView(this,'analytics')">Analytics</div>
       <div class="tn tn-desktop" onclick="switchView(this,'settings')">Settings</div>
-      <!-- Mobile More menu -->
-      <div class="tn tn-more" id="more-btn" onclick="toggleMoreMenu()">More ···</div>
+      <!-- Mobile: single menu button -->
+      <div class="tn tn-more" id="more-btn" onclick="toggleMoreMenu()">Menu ▾</div>
     </nav>
-    <div id="more-menu" style="display:none;position:fixed;top:52px;right:0;background:var(--ink2);border:1px solid var(--border);border-radius:0 0 12px 12px;box-shadow:0 8px 24px rgba(0,0,0,.1);z-index:200;min-width:180px;">
-      <div class="more-item" onclick="switchViewMore('lapsed','Lapsed Patients')">Lapsed Patients</div>
-      <div class="more-item" onclick="switchViewMore('noshow','No-Show Recovery')">No-Show Recovery</div>
-      <div class="more-item" onclick="switchViewMore('analytics','Analytics')">Analytics</div>
-      <div class="more-item" onclick="switchViewMore('settings','Settings')">Settings</div>
+    <!-- Mobile full nav dropdown (all views) -->
+    <div id="more-menu" style="display:none;position:fixed;top:52px;left:0;right:0;background:var(--ink2);border-bottom:1px solid var(--border);box-shadow:0 8px 24px rgba(0,0,0,.12);z-index:200;">
+      <div class="more-item" id="mm-outreach"  onclick="switchViewMore('outreach','Outreach')">📋 Outreach</div>
+      <div class="more-item" id="mm-queue"     onclick="switchViewMore('queue','Queue')">📤 Queue</div>
+      <div class="more-item" id="mm-requests"  onclick="switchViewMore('requests','Requests')">📩 Requests <span id="req-badge-m" style="display:none;background:#B53045;color:#fff;font-size:9px;font-weight:700;border-radius:10px;padding:1px 6px;margin-left:4px;"></span></div>
+      <div class="more-item" id="mm-lapsed"    onclick="switchViewMore('lapsed','Lapsed Patients')">🔄 Lapsed Patients</div>
+      <div class="more-item" id="mm-noshow"    onclick="switchViewMore('noshow','No-Show Recovery')">📅 No-Show Recovery</div>
+      <div class="more-item" id="mm-analytics" onclick="switchViewMore('analytics','Analytics')">📊 Analytics</div>
+      <div class="more-item" id="mm-settings"  onclick="switchViewMore('settings','Settings')">⚙ Settings</div>
     </div>
     <div class="topbar-r">
       <div class="api-pill" id="api-status-pill">
@@ -934,6 +941,16 @@ async function initApp() {
   document.getElementById('app').classList.add('visible');
   startIdleTimer();
 
+  // On mobile, the individual tabs are hidden — show "Outreach ▾" in the menu button
+  if (window.innerWidth <= 768) {
+    const mb = document.getElementById('more-btn');
+    mb.textContent = 'Outreach ▾';
+    mb.classList.add('active');
+    document.getElementById('mm-outreach').classList.add('active');
+    // Outreach is default view — sidebar should be visible
+    setSidebarVisible(true);
+  }
+
   // Set user info
   document.getElementById('user-name').textContent = user.name;
   document.getElementById('user-ava').textContent = user.name[0];
@@ -1118,6 +1135,10 @@ function selP(id) {
   }
 }
 
+function setSidebarVisible(show) {
+  document.querySelector('.shell').classList.toggle('sidebar-hidden', !show);
+}
+
 function toggleMoreMenu() {
   const m = document.getElementById('more-menu');
   m.style.display = m.style.display === 'none' ? 'block' : 'none';
@@ -1125,14 +1146,18 @@ function toggleMoreMenu() {
 
 function switchViewMore(name, label) {
   document.getElementById('more-menu').style.display = 'none';
-  // Update More button label to show active section
-  document.getElementById('more-btn').textContent = label + ' ···';
-  // Deactivate all main nav tabs
+  document.getElementById('more-btn').textContent = label + ' ▾';
   document.querySelectorAll('.tn').forEach(e => e.classList.remove('active'));
   document.getElementById('more-btn').classList.add('active');
-  // Switch view
+  // Highlight active item in dropdown
+  document.querySelectorAll('.more-item').forEach(e => e.classList.remove('active'));
+  const mm = document.getElementById('mm-' + name);
+  if (mm) mm.classList.add('active');
   document.querySelectorAll('.view').forEach(e => e.classList.remove('on'));
   document.getElementById('view-' + name).classList.add('on');
+  setSidebarVisible(name === 'outreach');
+  if (name === 'queue')     loadQueue();
+  if (name === 'requests')  loadRequests();
   if (name === 'lapsed')    loadLapsed();
   if (name === 'noshow')    loadNoShow();
   if (name === 'analytics') loadAnalytics();
@@ -1667,11 +1692,17 @@ async function loadRequests() {
     const data = await api('GET', `/api/requests${status ? '?status=' + status : ''}`);
     const reqs = data.requests || [];
 
-    // Update badge for new requests
+    // Update badge for new requests (desktop tab + mobile menu)
     const newCount = reqs.filter(r => r.status === 'new').length;
-    const badge = document.getElementById('req-badge');
-    if (newCount > 0) { badge.textContent = newCount; badge.style.display = 'inline'; }
-    else { badge.style.display = 'none'; }
+    const badge  = document.getElementById('req-badge');
+    const badgeM = document.getElementById('req-badge-m');
+    if (newCount > 0) {
+      badge.textContent  = newCount; badge.style.display  = 'inline';
+      badgeM.textContent = newCount; badgeM.style.display = 'inline';
+    } else {
+      badge.style.display = 'none';
+      badgeM.style.display = 'none';
+    }
 
     if (!reqs.length) {
       el.innerHTML = '<div style="color:var(--text3);font-size:13px;">No requests found.</div>';
@@ -1726,11 +1757,12 @@ async function setReqStatus(id, status) {
 // ═══════════════════ VIEW SWITCHING ═══════════════════
 function switchView(el, name) {
   document.getElementById('more-menu').style.display = 'none';
-  document.getElementById('more-btn').textContent = 'More ···';
+  document.getElementById('more-btn').textContent = 'Menu ▾';
   document.querySelectorAll('.tn').forEach(e => e.classList.remove('active'));
   el.classList.add('active');
   document.querySelectorAll('.view').forEach(e => e.classList.remove('on'));
   document.getElementById('view-' + name).classList.add('on');
+  setSidebarVisible(name === 'outreach');
 
   if (name === 'queue')     loadQueue();
   if (name === 'lapsed')    loadLapsed();
