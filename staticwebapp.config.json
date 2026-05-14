@@ -1,1 +1,16 @@
-{"routes":[{"route":"/*","rewrite":"/index.html"}],"navigationFallback":{"rewrite":"/index.html"}}
+{
+  "routes": [
+    {
+      "route": "/request.html",
+      "allowedRoles": ["anonymous"]
+    },
+    {
+      "route": "/*",
+      "rewrite": "/index.html"
+    }
+  ],
+  "navigationFallback": {
+    "rewrite": "/index.html",
+    "exclude": ["/request.html", "/*.{css,js,png,jpg,svg,ico,json}"]
+  }
+}
