@@ -663,6 +663,9 @@ function doLogout() {
   token = null; user = null;
   document.getElementById('app').classList.remove('visible');
   document.getElementById('login-screen').style.display = 'flex';
+  const btn = document.getElementById('l-btn');
+  btn.disabled = false;
+  btn.textContent = 'Sign In →';
 }
 
 // ═══════════════════ INIT ═══════════════════
