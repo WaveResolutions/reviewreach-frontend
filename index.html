@@ -363,6 +363,83 @@ input.fi::placeholder{color:var(--text3);}
 .toast.info{border-left:3px solid #6AABF7;}
 .toast.err{border-left:3px solid #E07080;}
 @keyframes tin{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:translateY(0);}}
+
+/* ── MOBILE RESPONSIVE ── */
+@media (max-width: 768px) {
+  /* Topbar */
+  .topbar{padding:0 12px;height:52px;}
+  .logo{font-size:15px;margin-right:12px;}
+  .logo-gem{width:24px;height:24px;}
+  .topbar-r .api-pill{display:none;}
+  .top-nav{overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;}
+  .top-nav::-webkit-scrollbar{display:none;}
+  .tn{padding:0 11px;font-size:11px;}
+  .btn-logout{font-size:10px;padding:4px 8px;white-space:nowrap;}
+  .user-pill span{display:none;}
+
+  /* Shell: stack sidebar above content */
+  .shell{flex-direction:column;}
+
+  /* Sidebar becomes a collapsible top panel */
+  .sidebar{
+    width:100%;height:auto;max-height:260px;
+    border-right:none;border-bottom:1px solid var(--border);
+    flex-shrink:0;
+  }
+  .sb-head{padding:10px 12px;}
+  .pscroll{max-height:140px;}
+  .sb-stats{grid-template-columns:repeat(4,1fr);padding:8px 12px;}
+  .sb-stat{padding:6px 8px;}
+  .ssv{font-size:16px;}
+
+  /* Content area */
+  .content{overflow-y:auto;flex:1;}
+  .view{overflow-y:auto;}
+
+  /* Detail panel — full screen overlay on mobile */
+  .cx{
+    position:fixed;inset:0;z-index:100;
+    background:var(--ink2);overflow-y:auto;
+    border-left:none;
+  }
+  .cx-close{display:flex!important;}
+
+  /* Settings / other full-page views */
+  .st-scroll{padding:16px 12px;}
+  .st-card{padding:14px;}
+  .st-body{gap:10px;}
+  .fi{font-size:13px;}
+
+  /* Queue / lapsed / noshow lists */
+  .view > div{padding:12px;}
+
+  /* Grid forms in settings */
+  div[style*="grid-template-columns:1fr 1fr"]{
+    display:flex!important;flex-direction:column!important;gap:10px!important;
+  }
+
+  /* Login screen */
+  .login-box{padding:28px 20px;width:92vw;}
+
+  /* Toasts */
+  #toasts{bottom:16px;right:12px;left:12px;}
+  .toast{max-width:100%;}
+}
+
+@media (max-width: 480px) {
+  .sb-stats{grid-template-columns:repeat(2,1fr);}
+  .topbar{height:48px;}
+  .logo{font-size:14px;}
+  .tn{padding:0 9px;font-size:10.5px;}
+}
+
+/* Mobile detail view — hide sidebar, show detail full screen */
+@media (max-width: 768px) {
+  .shell.mobile-detail .sidebar{display:none;}
+  .shell.mobile-detail .content{flex:1;}
+  .cx-scroll{padding:16px 14px;}
+  #mobile-back{display:flex!important;}
+}
 </style>
 </head>
 <body>
@@ -465,6 +542,7 @@ input.fi::placeholder{color:var(--text3);}
           <div class="cx-empty-sub">Choose from today's schedule to compose a personalized review request.</div>
         </div>
         <div class="cx-scroll" id="cx-area" style="display:none;">
+          <button id="mobile-back" onclick="mobileBack()" style="display:none;align-items:center;gap:6px;background:none;border:1px solid var(--border);border-radius:7px;padding:6px 12px;font-size:12px;color:var(--text2);cursor:pointer;margin-bottom:16px;">← Back to patients</button>
           <div id="cx-inner"></div>
         </div>
       </div>
@@ -932,6 +1010,18 @@ function selP(id) {
   document.getElementById('cx-empty').style.display = 'none';
   document.getElementById('cx-area').style.display  = 'block';
   renderCX();
+  // On mobile: hide sidebar, show detail full screen
+  if (window.innerWidth <= 768) {
+    document.querySelector('.shell').classList.add('mobile-detail');
+    document.getElementById('cx-area').scrollTop = 0;
+  }
+}
+
+function mobileBack() {
+  document.querySelector('.shell').classList.remove('mobile-detail');
+  sel = null;
+  document.getElementById('cx-empty').style.display = 'flex';
+  document.getElementById('cx-area').style.display  = 'none';
 }
 
 function updateStats() {
