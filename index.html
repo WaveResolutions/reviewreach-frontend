@@ -367,6 +367,16 @@ input.fi::placeholder{color:var(--text3);}
 </head>
 <body>
 
+<!-- SESSION TIMEOUT WARNING -->
+<div id="session-warning" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;display:none;align-items:center;justify-content:center;">
+  <div style="background:var(--ink2);border:1px solid var(--border);border-radius:16px;padding:32px;max-width:360px;width:90%;text-align:center;box-shadow:0 8px 32px rgba(0,0,0,.15);">
+    <div style="font-size:32px;margin-bottom:12px;">⏱</div>
+    <div style="font-size:15px;font-weight:600;color:var(--text);margin-bottom:8px;">Session Expiring Soon</div>
+    <div style="font-size:13px;color:var(--text2);margin-bottom:24px;">You'll be signed out in <span id="session-countdown">5:00</span> due to inactivity. This keeps patient data secure.</div>
+    <button onclick="resetIdleTimer()" style="background:var(--gold);color:#fff;border:none;border-radius:8px;padding:10px 28px;font-size:13px;font-weight:600;cursor:pointer;width:100%;">Stay Signed In</button>
+  </div>
+</div>
+
 <!-- LOGIN -->
 <div class="login-screen" id="login-screen">
   <div class="login-box">
@@ -661,12 +671,63 @@ function doLogout() {
   localStorage.removeItem('rr_token');
   localStorage.removeItem('rr_user');
   token = null; user = null;
+  stopIdleTimer();
+  document.getElementById('session-warning').style.display = 'none';
   document.getElementById('app').classList.remove('visible');
   document.getElementById('login-screen').style.display = 'flex';
   const btn = document.getElementById('l-btn');
   btn.disabled = false;
   btn.textContent = 'Sign In →';
 }
+
+// ═══════════════════ HIPAA SESSION TIMEOUT ═══════════════════
+const IDLE_WARN_MS  = 25 * 60 * 1000;  // warn at 25 min
+const IDLE_OUT_MS   = 30 * 60 * 1000;  // logout at 30 min
+
+let idleWarnTimer   = null;
+let idleOutTimer    = null;
+let countdownInterval = null;
+
+function startIdleTimer() {
+  stopIdleTimer();
+  idleWarnTimer = setTimeout(showSessionWarning, IDLE_WARN_MS);
+  idleOutTimer  = setTimeout(() => { hideSessionWarning(); doLogout(); }, IDLE_OUT_MS);
+}
+
+function stopIdleTimer() {
+  clearTimeout(idleWarnTimer);
+  clearTimeout(idleOutTimer);
+  clearInterval(countdownInterval);
+}
+
+function resetIdleTimer() {
+  hideSessionWarning();
+  startIdleTimer();
+}
+
+function showSessionWarning() {
+  const el = document.getElementById('session-warning');
+  el.style.display = 'flex';
+  let secsLeft = 5 * 60;
+  document.getElementById('session-countdown').textContent = '5:00';
+  countdownInterval = setInterval(() => {
+    secsLeft--;
+    const m = Math.floor(secsLeft / 60);
+    const s = String(secsLeft % 60).padStart(2, '0');
+    document.getElementById('session-countdown').textContent = `${m}:${s}`;
+    if (secsLeft <= 0) clearInterval(countdownInterval);
+  }, 1000);
+}
+
+function hideSessionWarning() {
+  clearInterval(countdownInterval);
+  document.getElementById('session-warning').style.display = 'none';
+}
+
+// Reset idle timer on any user activity
+['mousemove','mousedown','keydown','touchstart','scroll','click'].forEach(evt =>
+  document.addEventListener(evt, () => { if (token) resetIdleTimer(); }, { passive: true })
+);
 
 // ═══════════════════ INIT ═══════════════════
 window.addEventListener('DOMContentLoaded', () => {
@@ -683,6 +744,7 @@ window.addEventListener('DOMContentLoaded', () => {
 async function initApp() {
   document.getElementById('login-screen').style.display = 'none';
   document.getElementById('app').classList.add('visible');
+  startIdleTimer();
 
   // Set user info
   document.getElementById('user-name').textContent = user.name;
