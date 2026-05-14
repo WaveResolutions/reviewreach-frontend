@@ -383,10 +383,10 @@ input.fi::placeholder{color:var(--text3);}
   .logo-gem{width:24px;height:24px;}
   .topbar-r{flex-shrink:0;gap:6px;}
   .topbar-r .api-pill{display:none;}
-  /* Nav: only the Menu button is visible on mobile, fill the gap */
+  /* Nav: only the Menu button is visible on mobile, centred in the gap */
   .top-nav{flex:1;min-width:0;overflow:visible;}
   .tn-desktop{display:none!important;}
-  .tn-more{display:flex!important;flex:1;justify-content:flex-start;padding:0 14px;gap:8px;font-size:13px;font-weight:600;color:var(--text);}
+  .tn-more{display:flex!important;flex:1;justify-content:center;padding:0 14px;gap:8px;font-size:13px;font-weight:600;color:var(--text);}
   .tn{padding:0 11px;font-size:12px;flex-shrink:0;}
   .btn-logout{font-size:11px;padding:4px 8px;white-space:nowrap;}
   .user-pill span{display:none;}
@@ -425,6 +425,19 @@ input.fi::placeholder{color:var(--text3);}
 
   /* Queue / lapsed / noshow lists */
   .view > div{padding:12px;}
+
+  /* Summary stat grids: 2×2 on mobile instead of 4×1 */
+  .re-summary,.ns-summary,.kpi-row{grid-template-columns:repeat(2,1fr);}
+
+  /* Two-column side-by-side panels: stack on mobile */
+  .an-two,.ns-two{grid-template-columns:1fr;}
+
+  /* Lapsed patient cards: single column */
+  .lp-grid{grid-template-columns:1fr;}
+
+  /* Queue table: allow horizontal scroll so columns aren't clipped */
+  .qtable{display:block;overflow-x:auto;-webkit-overflow-scrolling:touch;white-space:nowrap;}
+  .qtable th,.qtable td{white-space:nowrap;}
 
   /* Grid forms in settings */
   div[style*="grid-template-columns:1fr 1fr"]{
