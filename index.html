@@ -289,7 +289,7 @@ input.subj:focus{border-color:rgba(200,146,42,.4);}
 .an-two{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
 
 /* ── SETTINGS ── */
-.st-scroll{flex:1;overflow-y:auto;padding:24px 28px;max-width:700px;}
+.st-scroll{flex:1;overflow-y:auto;padding:24px 28px;}
 .st-card{background:var(--ink2);border:1px solid var(--border);border-radius:10px;margin-bottom:14px;overflow:hidden;}
 .st-head{padding:14px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;background:var(--ink3);}
 .st-htitle{font-size:12px;font-weight:600;color:var(--text);}
@@ -383,11 +383,10 @@ input.fi::placeholder{color:var(--text3);}
   .logo-gem{width:24px;height:24px;}
   .topbar-r{flex-shrink:0;gap:6px;}
   .topbar-r .api-pill{display:none;}
-  /* Nav scrolls horizontally so sign-out is never hidden */
-  .top-nav{flex:1;min-width:0;overflow-x:auto;overflow-y:hidden;scrollbar-width:none;}
-  .top-nav::-webkit-scrollbar{display:none;}
+  /* Nav: only the Menu button is visible on mobile, fill the gap */
+  .top-nav{flex:1;min-width:0;overflow:visible;}
   .tn-desktop{display:none!important;}
-  .tn-more{display:flex!important;}
+  .tn-more{display:flex!important;flex:1;justify-content:flex-start;padding:0 14px;gap:8px;font-size:13px;font-weight:600;color:var(--text);}
   .tn{padding:0 11px;font-size:12px;flex-shrink:0;}
   .btn-logout{font-size:11px;padding:4px 8px;white-space:nowrap;}
   .user-pill span{display:none;}
@@ -941,10 +940,10 @@ async function initApp() {
   document.getElementById('app').classList.add('visible');
   startIdleTimer();
 
-  // On mobile, the individual tabs are hidden — show "Outreach ▾" in the menu button
+  // On mobile, the individual tabs are hidden — show "☰ Outreach" in the menu button
   if (window.innerWidth <= 768) {
     const mb = document.getElementById('more-btn');
-    mb.textContent = 'Outreach ▾';
+    mb.textContent = '☰  Outreach';
     mb.classList.add('active');
     document.getElementById('mm-outreach').classList.add('active');
     // Outreach is default view — sidebar should be visible
@@ -1146,7 +1145,7 @@ function toggleMoreMenu() {
 
 function switchViewMore(name, label) {
   document.getElementById('more-menu').style.display = 'none';
-  document.getElementById('more-btn').textContent = label + ' ▾';
+  document.getElementById('more-btn').textContent = '☰  ' + label;
   document.querySelectorAll('.tn').forEach(e => e.classList.remove('active'));
   document.getElementById('more-btn').classList.add('active');
   // Highlight active item in dropdown
