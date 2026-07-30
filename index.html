@@ -933,6 +933,7 @@ let user  = JSON.parse(localStorage.getItem('rr_user') || 'null');
 let schedule = [];
 let sel = null, ch = 'sms', tm = '3hr', ti = 0, cn = true;
 let sentMap = {};
+let currentDataSource = 'athena'; // updated by loadImportHistory
 let queue = [];
 let lapsedPatients = [];
 let notifiedWL = new Set();
@@ -1120,9 +1121,19 @@ async function loadSchedule() {
       toast('ok', '⚡', `${schedule.length} patients loaded from ${src}.`);
     }
   } catch (e) {
-    document.getElementById('plist').innerHTML =
-      `<div style="padding:16px;color:#E07080;font-size:11px;">Failed to load schedule: ${e.message}</div>`;
-    toast('err', '✕', `Schedule load failed: ${e.message}`);
+    if (currentDataSource === 'imported') {
+      // In CSV mode, a schedule error just means no data imported yet — show the prompt
+      document.getElementById('plist').innerHTML =
+        `<div style="padding:16px 14px;font-size:11px;color:var(--text3);line-height:1.7;">
+          No patients imported for today.<br>
+          Use <strong>📂 Import CSV</strong> above to upload today's schedule from athenahealth.
+        </div>`;
+      toast('ok', '📥', "CSV mode active — use Import CSV above to load today's patients.");
+    } else {
+      document.getElementById('plist').innerHTML =
+        `<div style="padding:16px;color:#E07080;font-size:11px;">Failed to load schedule: ${e.message}</div>`;
+      toast('err', '✕', `Schedule load failed: ${e.message}`);
+    }
   }
 }
 
@@ -1886,6 +1897,7 @@ async function toggleImportMode() {
   try {
     await api('PUT', '/api/import/datasource', { dataSource: newSource });
     tog.classList.toggle('on');
+    currentDataSource = newSource;
     updateImportModeUI(newSource);
     toast('ok', '✓', newSource === 'imported' ? 'CSV / Email import mode enabled.' : 'athenahealth API mode enabled.');
     loadSchedule();
@@ -1918,7 +1930,8 @@ async function loadImportHistory() {
     const data = await api('GET', '/api/import/history');
 
     document.getElementById('import-email-addr').value = data.importEmail || '';
-    updateImportModeUI(data.dataSource || 'athena');
+    currentDataSource = data.dataSource || 'athena';
+    updateImportModeUI(currentDataSource);
 
     // Update sidebar strip last-sync text
     const status = document.getElementById('sb-import-status');
