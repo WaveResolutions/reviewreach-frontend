@@ -396,6 +396,12 @@ input.fi::placeholder{color:var(--text3);}
 .sb-sort{padding:4px 14px 0;display:flex;align-items:center;justify-content:space-between;}
 .sb-sort-label{font-size:9px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);}
 .sb-sort select{font-size:9px;border:1px solid var(--border);border-radius:4px;background:var(--ink2);color:var(--text2);padding:2px 18px 2px 5px;outline:none;cursor:pointer;font-family:var(--sans);appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='5' viewBox='0 0 8 5'%3E%3Cpath d='M1 1l3 3 3-3' stroke='%238A97B4' stroke-width='1.2' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 4px center;}
+.sb-import{display:flex;align-items:center;gap:8px;padding:6px 14px;border-bottom:1px solid var(--border);flex-shrink:0;min-height:32px;}
+.sb-import-status{flex:1;font-size:10px;color:var(--text3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.sb-import-btn{font-size:10px;font-weight:600;color:var(--text2);background:var(--ink3);border:1px solid var(--border);border-radius:5px;padding:3px 9px;cursor:pointer;white-space:nowrap;display:inline-flex;align-items:center;gap:4px;transition:all .12s;}
+.sb-import-btn:hover{border-color:var(--border2);color:var(--text);}
+.sb-import-sync{font-size:10px;font-weight:700;color:#fff;background:var(--gold);border:none;border-radius:5px;padding:3px 10px;cursor:pointer;white-space:nowrap;transition:opacity .12s;}
+.sb-import-sync:hover{opacity:.85;}
 .sb-page{display:none;align-items:center;justify-content:center;gap:8px;padding:6px 14px;border-top:1px solid var(--border);flex-shrink:0;}
 .sb-page-btn{font-size:13px;font-weight:600;color:var(--text3);background:var(--ink3);border:1px solid var(--border);border-radius:5px;width:26px;height:22px;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .12s;line-height:1;}
 .sb-page-btn:hover:not(:disabled){color:var(--text);border-color:var(--border2);}
@@ -612,6 +618,16 @@ input.fi::placeholder{color:var(--text3);}
           </select>
         </div>
       </div>
+      <!-- Import strip — shown when practice is in CSV/Email mode -->
+      <div class="sb-import" id="sb-import-strip" style="display:none;">
+        <span class="sb-import-status" id="sb-import-status">No import yet</span>
+        <label class="sb-import-btn" title="Upload CSV from athenahealth">
+          📂 Import CSV
+          <input type="file" id="csv-file-input" accept=".csv" style="display:none;" onchange="csvFileSelected()">
+        </label>
+        <button class="sb-import-sync" id="csv-upload-btn" onclick="uploadCSV()" style="display:none;">⟳ Sync</button>
+      </div>
+
       <div class="pscroll" id="plist">
         <div class="loading"><div class="spinner"></div>Loading…</div>
       </div>
@@ -814,6 +830,38 @@ input.fi::placeholder{color:var(--text3);}
               </div>
             </div>
           </div>
+          <!-- PATIENT DATA IMPORT — one-time setup only -->
+          <div class="st-card">
+            <div class="st-head">
+              <div class="st-htitle">📥 Patient Data Import</div>
+              <div class="st-conn" id="import-mode-pill"><div class="st-conn-dot"></div><span id="import-mode-label">Checking…</span></div>
+            </div>
+            <div class="st-body">
+              <div style="font-size:12px;color:var(--text2);margin-bottom:16px;line-height:1.7;">
+                No API required. athenahealth emails a scheduled report here automatically — or front desk uploads a CSV manually from the Outreach tab. Duplicates are never created.
+              </div>
+
+              <!-- Data source toggle -->
+              <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;background:var(--ink3);border-radius:8px;border:1px solid var(--border);margin-bottom:12px;">
+                <div>
+                  <div style="font-size:12px;font-weight:500;color:var(--text);">CSV / Email Import Mode</div>
+                  <div style="font-size:10px;color:var(--text3);margin-top:2px;">Show import button on Outreach tab instead of pulling from athenahealth API</div>
+                </div>
+                <div class="tog" id="import-mode-tog" onclick="toggleImportMode()"><div class="tog-k"></div></div>
+              </div>
+
+              <!-- Inbound email address -->
+              <div style="border:1px solid var(--border);border-radius:8px;padding:14px;">
+                <div style="font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;">Automated Email Address</div>
+                <div style="font-size:11px;color:var(--text3);margin-bottom:10px;">In athenahealth → Reports → Schedule Report → Delivery: Email → paste this address. Reports arrive automatically and import without any staff action.</div>
+                <div style="display:flex;gap:8px;align-items:center;">
+                  <input class="fi" id="import-email-addr" readonly style="flex:1;font-family:monospace;font-size:11px;opacity:.8;" value="Loading…">
+                  <button class="btn-sm" onclick="copyImportEmail()">⧉ Copy</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
           <div class="st-card">
             <div class="st-head"><div class="st-htitle">⚙ Modules</div></div>
             <div class="st-body">
@@ -1042,6 +1090,7 @@ async function initApp() {
     loadSchedule(),
     checkAthenaStatus(),
     loadSettings(),
+    loadImportHistory(),
   ]);
 }
 
@@ -1059,7 +1108,8 @@ async function loadSchedule() {
 
     renderPList(schedule);
     updateStats();
-    toast('ok', '⚡', `${schedule.length} patients loaded from athenahealth.`);
+    const src = data.source === 'imported' ? 'CSV import' : 'athenahealth';
+    toast('ok', '⚡', `${schedule.length} patients loaded from ${src}.`);
   } catch (e) {
     document.getElementById('plist').innerHTML =
       `<div style="padding:16px;color:#E07080;font-size:11px;">Failed to load schedule: ${e.message}</div>`;
@@ -1243,7 +1293,7 @@ function switchViewMore(name, label) {
   if (name === 'lapsed')    loadLapsed();
   if (name === 'noshow')    loadNoShow();
   if (name === 'analytics') loadAnalytics();
-  if (name === 'settings')  { checkAthenaStatus(); loadSettings(); loadPhysicians(); }
+  if (name === 'settings')  { checkAthenaStatus(); loadSettings(); loadPhysicians(); loadImportHistory(); }
 }
 
 // Close more menu when tapping outside
@@ -1765,6 +1815,117 @@ async function removePhysician(id) {
   }
 }
 
+// ═══════════════════ IMPORT ═══════════════════
+let csvSelectedFile = null;
+
+function csvFileSelected() {
+  const input = document.getElementById('csv-file-input');
+  if (input.files && input.files[0]) {
+    csvSelectedFile = input.files[0];
+    document.getElementById('sb-import-status').textContent = csvSelectedFile.name;
+    document.getElementById('csv-upload-btn').style.display = 'inline-flex';
+  }
+}
+
+async function uploadCSV() {
+  if (!csvSelectedFile) { toast('err', '✕', 'Choose a CSV file first.'); return; }
+  const btn    = document.getElementById('csv-upload-btn');
+  const status = document.getElementById('sb-import-status');
+  btn.textContent = '⏳';
+  btn.disabled = true;
+  try {
+    const form = new FormData();
+    form.append('file', csvSelectedFile);
+    const res = await fetch(`${API_BASE}/api/import/csv`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${token}` },
+      body: form,
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Import failed');
+
+    toast('ok', '📥', `Imported: ${data.inserted} new · ${data.updated} updated · ${data.skipped} skipped`);
+
+    // Reset picker
+    csvSelectedFile = null;
+    document.getElementById('csv-file-input').value = '';
+    btn.style.display = 'none';
+
+    // Update strip status
+    const now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    status.textContent = `Last sync ${now} · +${data.inserted} new`;
+
+    loadSchedule();
+  } catch (e) {
+    toast('err', '✕', `Import error: ${e.message}`);
+  } finally {
+    btn.textContent = '⟳ Sync';
+    btn.disabled = false;
+  }
+}
+
+function copyImportEmail() {
+  const addr = document.getElementById('import-email-addr').value;
+  if (!addr || addr === 'Loading…') return;
+  navigator.clipboard.writeText(addr).then(() => toast('ok', '⧉', 'Import email copied.'));
+}
+
+async function toggleImportMode() {
+  const tog = document.getElementById('import-mode-tog');
+  const isOn = tog.classList.contains('on');
+  const newSource = isOn ? 'athena' : 'imported';
+  try {
+    await api('PUT', '/api/import/datasource', { dataSource: newSource });
+    tog.classList.toggle('on');
+    updateImportModeUI(newSource);
+    toast('ok', '✓', newSource === 'imported' ? 'CSV / Email import mode enabled.' : 'athenahealth API mode enabled.');
+    loadSchedule();
+  } catch (e) {
+    toast('err', '✕', e.message);
+  }
+}
+
+function updateImportModeUI(dataSource) {
+  const pill  = document.getElementById('import-mode-pill');
+  const label = document.getElementById('import-mode-label');
+  const strip = document.getElementById('sb-import-strip');
+  const tog   = document.getElementById('import-mode-tog');
+
+  if (dataSource === 'imported') {
+    pill.className = 'st-conn';
+    label.textContent = 'CSV / Email Mode';
+    if (strip) strip.style.display = 'flex';
+    if (tog)   tog.classList.add('on');
+  } else {
+    pill.className = 'st-conn off';
+    label.textContent = 'athenahealth API Mode';
+    if (strip) strip.style.display = 'none';
+    if (tog)   tog.classList.remove('on');
+  }
+}
+
+async function loadImportHistory() {
+  try {
+    const data = await api('GET', '/api/import/history');
+
+    document.getElementById('import-email-addr').value = data.importEmail || '';
+    updateImportModeUI(data.dataSource || 'athena');
+
+    // Update sidebar strip last-sync text
+    const status = document.getElementById('sb-import-status');
+    if (data.history && data.history.length) {
+      const last = data.history[0];
+      const dt   = new Date(last.imported_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      const src  = last.method === 'email_inbound' ? '✉' : '📂';
+      status.textContent = `${src} Last sync ${dt} · +${last.inserted} new`;
+    } else {
+      status.textContent = 'No import yet — upload a CSV above';
+    }
+  } catch (e) {
+    console.warn('Import history failed:', e.message);
+  }
+}
+
 // ═══════════════════ APPOINTMENT REQUESTS ═══════════════════
 let reqMap = {};  // id → request object for modal
 
@@ -1958,7 +2119,7 @@ function switchView(el, name) {
   if (name === 'noshow')    loadNoShow();
   if (name === 'analytics') loadAnalytics();
   if (name === 'requests')  loadRequests();
-  if (name === 'settings')  { checkAthenaStatus(); loadSettings(); loadPhysicians(); }
+  if (name === 'settings')  { checkAthenaStatus(); loadSettings(); loadPhysicians(); loadImportHistory(); }
 }
 
 // ═══════════════════ TOAST ═══════════════════
