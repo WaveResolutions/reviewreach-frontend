@@ -1108,8 +1108,17 @@ async function loadSchedule() {
 
     renderPList(schedule);
     updateStats();
-    const src = data.source === 'imported' ? 'CSV import' : 'athenahealth';
-    toast('ok', '⚡', `${schedule.length} patients loaded from ${src}.`);
+    if (data.source === 'imported' && schedule.length === 0) {
+      document.getElementById('plist').innerHTML =
+        `<div style="padding:16px 14px;font-size:11px;color:var(--text3);line-height:1.7;">
+          No patients imported for today.<br>
+          Use <strong>📂 Import CSV</strong> above to upload today's schedule from athenahealth.
+        </div>`;
+      toast('ok', '📥', 'CSV mode active — upload today\'s schedule to get started.');
+    } else {
+      const src = data.source === 'imported' ? 'CSV import' : 'athenahealth';
+      toast('ok', '⚡', `${schedule.length} patients loaded from ${src}.`);
+    }
   } catch (e) {
     document.getElementById('plist').innerHTML =
       `<div style="padding:16px;color:#E07080;font-size:11px;">Failed to load schedule: ${e.message}</div>`;
