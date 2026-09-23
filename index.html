@@ -176,12 +176,15 @@ body{font-family:var(--sans);background:var(--ink);color:var(--text);font-size:1
 .t-sent{background:rgba(11,139,124,.12);color:var(--teal2);border:1px solid rgba(11,139,124,.2);}
 .t-q{background:rgba(200,146,42,.1);color:var(--gold2);border:1px solid rgba(200,146,42,.2);}
 
-.sb-stats{border-top:1px solid var(--border);padding:12px 14px;display:grid;grid-template-columns:1fr 1fr;gap:6px;flex-shrink:0;}
-.sb-stat{background:var(--ink3);border:1px solid var(--border);border-radius:7px;padding:8px 10px;}
-.ssv{font-family:var(--serif);font-size:20px;font-weight:700;color:var(--text);line-height:1;}
+.sb-stats{border-top:1px solid var(--border);padding:8px 0;display:flex;flex-shrink:0;}
+.sb-stat{flex:1;text-align:center;padding:4px 0;border-right:1px solid var(--border);}
+.sb-stat:last-child{border-right:none;}
+.ssv{font-family:var(--serif);font-size:16px;font-weight:700;color:var(--text);line-height:1;}
 .ssv.t{color:var(--teal2);}
 .ssv.g{color:var(--gold2);}
-.ssl{font-size:9px;font-weight:500;color:var(--text3);margin-top:2px;text-transform:uppercase;letter-spacing:.05em;}
+.ssl{font-size:8px;font-weight:500;color:var(--text3);margin-top:2px;text-transform:uppercase;letter-spacing:.05em;}
+.pc.no-contact{opacity:0.42;}
+.pc.no-contact .pc-check{cursor:not-allowed;}
 
 /* ── CONTENT ── */
 .content{flex:1;overflow:hidden;display:flex;flex-direction:column;}
@@ -444,9 +447,8 @@ input.fi::placeholder{color:var(--text3);}
   }
   .sb-head{padding:10px 12px;}
   .pscroll{flex:1;overflow-y:auto;}
-  .sb-stats{grid-template-columns:repeat(4,1fr);padding:6px 10px;}
-  .sb-stat{padding:5px 7px;}
-  .ssv{font-size:15px;}
+  .sb-stats{padding:6px 0;}
+  .ssv{font-size:14px;}
 
   /* Content area */
   .content{overflow-y:auto;flex:1;}
@@ -505,7 +507,7 @@ input.fi::placeholder{color:var(--text3);}
 }
 
 @media (max-width: 480px) {
-  .sb-stats{grid-template-columns:repeat(2,1fr);}
+  .sb-stats{padding:5px 0;}
   .topbar{height:48px;}
 }
 
@@ -619,7 +621,11 @@ input.fi::placeholder{color:var(--text3);}
         </div>
       </div>
       <div class="sb-sec">
-        <span>Today's Schedule <span class="sb-cnt" id="sb-cnt">—</span></span>
+        <label style="margin-right:5px;cursor:pointer;" title="Select all">
+          <input type="checkbox" id="bulk-select-all" onchange="bulkToggleAll(this.checked)" style="accent-color:var(--gold);cursor:pointer;width:12px;height:12px;">
+        </label>
+        <span style="flex:1;">Today's Schedule <span class="sb-cnt" id="sb-cnt">—</span></span>
+        <span class="sb-bulk-count" id="bulk-count" style="margin-right:6px;"></span>
         <div class="sb-sort">
           <select id="psort" onchange="sortChanged()" title="Sort patients">
             <option value="time">Time ↑</option>
@@ -646,15 +652,8 @@ input.fi::placeholder{color:var(--text3);}
         <span class="sb-page-info" id="sb-page-info">1 / 1</span>
         <button class="sb-page-btn" id="sb-next" onclick="nextPage()" disabled>›</button>
       </div>
-      <!-- Bulk send bar — select all + channel/template picker + send button -->
+      <!-- Bulk send bar — channel/template picker + send button -->
       <div class="sb-bulk" id="sb-bulk" style="display:none;">
-        <div class="sb-bulk-top">
-          <label class="sb-bulk-sel">
-            <input type="checkbox" id="bulk-select-all" onchange="bulkToggleAll(this.checked)" style="accent-color:var(--gold);cursor:pointer;">
-            Select all
-          </label>
-          <span class="sb-bulk-count" id="bulk-count">0 selected</span>
-        </div>
         <div class="sb-bulk-actions">
           <select id="bulk-channel" class="sb-bulk-select">
             <option value="sms">📱 SMS</option>
@@ -1166,8 +1165,8 @@ async function loadSchedule() {
       if (p.outreachStatus) sentMap[p.patientid] = p.outreachStatus;
     });
 
-    // Pre-select all patients for bulk send
-    selectedPatients = new Set(schedule.map(p => p.patientid));
+    // Pre-select all contactable patients for bulk send
+    selectedPatients = new Set(schedule.filter(p => p.canContact !== false).map(p => p.patientid));
 
     renderPList(schedule);
     updateStats();
@@ -1281,20 +1280,20 @@ function renderPList(list) {
     const isSent  = status === 'sent';
     const isQ     = status === 'queued';
     const isSel   = sel && sel.patientid === p.patientid;
+    const isNC    = p.canContact === false;
     const checked = selectedPatients.has(p.patientid);
     const time    = p.appointmenttime || p.starttime || '—';
-    return `<div class="pc${isSel ? ' sel' : ''}" onclick="selP('${p.patientid}')">
-      <input type="checkbox" class="pc-check" ${checked ? 'checked' : ''}
+    return `<div class="pc${isSel ? ' sel' : ''}${isNC ? ' no-contact' : ''}" onclick="selP('${p.patientid}')">
+      <input type="checkbox" class="pc-check" ${checked ? 'checked' : ''}${isNC ? ' disabled' : ''}
         onclick="event.stopPropagation();togglePatientSel('${p.patientid}',this.checked)"
         title="Include in bulk send">
       <div class="pc-ava">${p.firstname[0]}${p.lastname[0]}</div>
       <div class="pc-body">
         <div class="pc-name">${p.firstname} ${p.lastname}</div>
-        <div class="pc-sub">${time} · ${p.appointmenttype || ''}</div>
+        <div class="pc-sub">${time} · ${p.appointmenttype || ''}${isNC ? ' · <em style="font-style:italic;">no contact</em>' : ''}</div>
         <div class="pc-tags">
           ${isSent ? '<span class="tag t-sent">✓ SENT</span>' : ''}
           ${isQ    ? '<span class="tag t-q">⏱ QUEUED</span>'  : ''}
-          ${!p.canContact ? '<span class="tag" style="background:rgba(192,55,74,.1);color:#E07080;border:1px solid rgba(192,55,74,.2);">NO CONTACT</span>' : ''}
         </div>
       </div>
     </div>`;
@@ -1434,11 +1433,11 @@ function updateBulkBar() {
   const sendCount = document.getElementById('bulk-send-count');
   const sendBtn   = document.getElementById('bulk-send-btn');
   const allCb     = document.getElementById('bulk-select-all');
-  if (countEl)   countEl.textContent = `${count} selected`;
+  if (countEl)   countEl.textContent = count > 0 ? `${count} selected` : '';
   if (sendCount) sendCount.textContent = count;
   if (sendBtn)   sendBtn.disabled = count === 0;
   if (allCb) {
-    const visible   = pFiltered.slice(pPage * pPageSize, (pPage + 1) * pPageSize);
+    const visible   = pFiltered.slice(pPage * pPageSize, (pPage + 1) * pPageSize).filter(p => p.canContact !== false);
     const allCheck  = visible.length > 0 && visible.every(p => selectedPatients.has(p.patientid));
     allCb.checked       = allCheck;
     allCb.indeterminate = !allCheck && visible.some(p => selectedPatients.has(p.patientid));
