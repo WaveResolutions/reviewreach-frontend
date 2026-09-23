@@ -143,7 +143,7 @@ body{font-family:var(--sans);background:var(--ink);color:var(--text);font-size:1
 
 /* ── SIDEBAR ── */
 .sidebar{
-  width:272px;flex-shrink:0;background:var(--ink2);
+  width:420px;flex-shrink:0;background:var(--ink2);
   border-right:1px solid var(--border);display:flex;flex-direction:column;
 }
 .sb-head{padding:14px;flex-shrink:0;}
@@ -190,6 +190,31 @@ body{font-family:var(--sans);background:var(--ink);color:var(--text);font-size:1
 .content{flex:1;overflow:hidden;display:flex;flex-direction:column;}
 .view{display:none;flex:1;overflow:hidden;flex-direction:column;}
 .view.on{display:flex;}
+
+/* ── COMPOSER DRAWER ── */
+.cx-drawer{
+  position:absolute;right:0;top:0;bottom:0;width:480px;
+  background:var(--ink2);border-left:1px solid var(--border);
+  box-shadow:-8px 0 32px rgba(0,0,0,.08);
+  z-index:20;display:flex;flex-direction:column;
+  transform:translateX(100%);
+  transition:transform .25s cubic-bezier(.4,0,.2,1);
+}
+.cx-drawer.open{transform:translateX(0);}
+.cx-drawer-head{
+  padding:12px 18px;border-bottom:1px solid var(--border);
+  display:flex;align-items:center;justify-content:space-between;
+  background:var(--ink3);flex-shrink:0;
+}
+.cx-drawer-title{font-family:var(--serif);font-size:15px;font-weight:700;color:var(--text);}
+.cx-drawer-close{
+  background:none;border:1px solid var(--border2);border-radius:6px;
+  padding:4px 10px;font-size:11px;color:var(--text2);cursor:pointer;
+  transition:all .12s;
+}
+.cx-drawer-close:hover{color:var(--text);border-color:var(--border2);}
+/* Patient contact line */
+.pc-contact{font-size:9px;color:var(--text3);margin-top:2px;font-family:var(--mono);}
 
 /* ── LOADING ── */
 .loading{display:flex;align-items:center;justify-content:center;flex:1;gap:10px;color:var(--text3);font-size:12px;}
@@ -445,6 +470,7 @@ input.fi::placeholder{color:var(--text3);}
     width:100%;border-right:none;border-bottom:1px solid var(--border);
     flex-shrink:0;max-height:48vh;
   }
+  .cx-drawer{width:100%;}
   .sb-head{padding:10px 12px;}
   .pscroll{flex:1;overflow-y:auto;}
   .sb-stats{padding:6px 0;}
@@ -679,15 +705,21 @@ input.fi::placeholder{color:var(--text3);}
     <div class="content">
 
       <!-- OUTREACH -->
-      <div class="view on" id="view-outreach">
+      <div class="view on" id="view-outreach" style="position:relative;">
         <div class="cx-empty" id="cx-empty">
           <div class="cx-empty-icon">✦</div>
           <div class="cx-empty-title">Select a patient</div>
           <div class="cx-empty-sub">Choose from today's schedule to compose a personalized review request.</div>
         </div>
-        <div class="cx-scroll" id="cx-area" style="display:none;">
-          <button id="mobile-back" onclick="mobileBack()" style="display:none;align-items:center;gap:6px;background:none;border:1px solid var(--border);border-radius:7px;padding:6px 12px;font-size:12px;color:var(--text2);cursor:pointer;margin-bottom:16px;">← Back to patients</button>
-          <div id="cx-inner"></div>
+        <!-- Composer drawer — slides in from right when a patient is selected -->
+        <div class="cx-drawer" id="cx-drawer">
+          <div class="cx-drawer-head">
+            <div class="cx-drawer-title" id="cx-drawer-title">Compose message</div>
+            <button class="cx-drawer-close" onclick="closeDrawer()">✕ Close</button>
+          </div>
+          <div class="cx-scroll" id="cx-area" style="display:none;">
+            <div id="cx-inner"></div>
+          </div>
         </div>
       </div>
 
@@ -1283,14 +1315,16 @@ function renderPList(list) {
     const isNC    = p.canContact === false;
     const checked = selectedPatients.has(p.patientid);
     const time    = p.appointmenttime || p.starttime || '—';
+    const contact = [p.mobilephone ? `📱 ${p.mobilephone}` : '', p.email ? `✉ ${p.email}` : ''].filter(Boolean).join('  ·  ');
     return `<div class="pc${isSel ? ' sel' : ''}${isNC ? ' no-contact' : ''}" onclick="selP('${p.patientid}')">
       <input type="checkbox" class="pc-check" ${checked ? 'checked' : ''}${isNC ? ' disabled' : ''}
         onclick="event.stopPropagation();togglePatientSel('${p.patientid}',this.checked)"
         title="Include in bulk send">
-      <div class="pc-ava">${p.firstname[0]}${p.lastname[0]}</div>
+      <div class="pc-ava" style="width:34px;height:34px;font-size:13px;">${p.firstname[0]}${p.lastname[0]}</div>
       <div class="pc-body">
-        <div class="pc-name">${p.firstname} ${p.lastname}</div>
-        <div class="pc-sub">${time} · ${p.appointmenttype || ''}${isNC ? ' · <em style="font-style:italic;">no contact</em>' : ''}</div>
+        <div class="pc-name">${p.firstname} ${p.lastname}${isSel ? '<span style="float:right;font-size:9px;color:var(--gold2);font-weight:600;margin-left:8px;">Composing →</span>' : ''}</div>
+        <div class="pc-sub">${time} · ${p.appointmenttype || ''}${p.providername ? ' · ' + p.providername : ''}${isNC ? ' · <em style="opacity:.7;">no contact</em>' : ''}</div>
+        ${contact && !isNC ? `<div class="pc-contact">${contact}</div>` : ''}
         <div class="pc-tags">
           ${isSent ? '<span class="tag t-sent">✓ SENT</span>' : ''}
           ${isQ    ? '<span class="tag t-q">⏱ QUEUED</span>'  : ''}
@@ -1348,13 +1382,25 @@ function selP(id) {
   sel = schedule.find(p => p.patientid === id);
   ti  = 0;
   renderPList(getCurrentFilter());
-  document.getElementById('cx-empty').style.display = 'none';
-  document.getElementById('cx-area').style.display  = 'block';
+  const drawer = document.getElementById('cx-drawer');
+  const area   = document.getElementById('cx-area');
+  const title  = document.getElementById('cx-drawer-title');
+  drawer.classList.add('open');
+  area.style.display = 'block';
+  if (title && sel) title.textContent = sel.firstname + ' ' + sel.lastname;
   renderCX();
-  // On mobile: hide sidebar, show detail full screen
   if (window.innerWidth <= 768) {
     document.querySelector('.shell').classList.add('mobile-detail');
-    document.getElementById('cx-area').scrollTop = 0;
+    area.scrollTop = 0;
+  }
+}
+
+function closeDrawer() {
+  document.getElementById('cx-drawer').classList.remove('open');
+  sel = null;
+  renderPList(getCurrentFilter());
+  if (window.innerWidth <= 768) {
+    document.querySelector('.shell').classList.remove('mobile-detail');
   }
 }
 
@@ -1396,10 +1442,7 @@ document.addEventListener('click', e => {
 });
 
 function mobileBack() {
-  document.querySelector('.shell').classList.remove('mobile-detail');
-  sel = null;
-  document.getElementById('cx-empty').style.display = 'flex';
-  document.getElementById('cx-area').style.display  = 'none';
+  closeDrawer();
 }
 
 function updateStats() {
