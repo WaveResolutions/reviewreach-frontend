@@ -402,6 +402,16 @@ input.fi::placeholder{color:var(--text3);}
 .sb-import-btn:hover{border-color:var(--border2);color:var(--text);}
 .sb-import-sync{font-size:10px;font-weight:700;color:#fff;background:var(--gold);border:none;border-radius:5px;padding:3px 10px;cursor:pointer;white-space:nowrap;transition:opacity .12s;}
 .sb-import-sync:hover{opacity:.85;}
+.sb-bulk{border-top:1px solid var(--border);padding:8px 14px;flex-shrink:0;background:var(--ink3);}
+.sb-bulk-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;}
+.sb-bulk-sel{display:flex;align-items:center;gap:5px;font-size:10px;color:var(--text2);cursor:pointer;user-select:none;}
+.sb-bulk-count{font-family:var(--mono);font-size:9px;color:var(--text3);}
+.sb-bulk-actions{display:flex;gap:5px;align-items:center;}
+.sb-bulk-select{font-size:10px;padding:3px 5px;border:1px solid var(--border);border-radius:4px;background:var(--ink2);color:var(--text2);outline:none;cursor:pointer;font-family:var(--sans);}
+.sb-bulk-send{flex:1;font-size:10px;font-weight:700;color:#fff;background:var(--gold);border:none;border-radius:5px;padding:5px 8px;cursor:pointer;white-space:nowrap;transition:opacity .12s;}
+.sb-bulk-send:hover{opacity:.85;}
+.sb-bulk-send:disabled{opacity:.4;cursor:not-allowed;}
+.pc-check{flex-shrink:0;width:13px;height:13px;margin-top:10px;accent-color:var(--gold);cursor:pointer;}
 .sb-page{display:none;align-items:center;justify-content:center;gap:8px;padding:6px 14px;border-top:1px solid var(--border);flex-shrink:0;}
 .sb-page-btn{font-size:13px;font-weight:600;color:var(--text3);background:var(--ink3);border:1px solid var(--border);border-radius:5px;width:26px;height:22px;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .12s;line-height:1;}
 .sb-page-btn:hover:not(:disabled){color:var(--text);border-color:var(--border2);}
@@ -635,6 +645,28 @@ input.fi::placeholder{color:var(--text3);}
         <button class="sb-page-btn" id="sb-prev" onclick="prevPage()" disabled>‹</button>
         <span class="sb-page-info" id="sb-page-info">1 / 1</span>
         <button class="sb-page-btn" id="sb-next" onclick="nextPage()" disabled>›</button>
+      </div>
+      <!-- Bulk send bar — select all + channel/template picker + send button -->
+      <div class="sb-bulk" id="sb-bulk" style="display:none;">
+        <div class="sb-bulk-top">
+          <label class="sb-bulk-sel">
+            <input type="checkbox" id="bulk-select-all" onchange="bulkToggleAll(this.checked)" style="accent-color:var(--gold);cursor:pointer;">
+            Select all
+          </label>
+          <span class="sb-bulk-count" id="bulk-count">0 selected</span>
+        </div>
+        <div class="sb-bulk-actions">
+          <select id="bulk-channel" class="sb-bulk-select">
+            <option value="sms">📱 SMS</option>
+            <option value="email">✉ Email</option>
+          </select>
+          <select id="bulk-template" class="sb-bulk-select">
+            <option value="warm">Warm</option>
+            <option value="brief">Brief</option>
+            <option value="personal">Personal</option>
+          </select>
+          <button class="sb-bulk-send" id="bulk-send-btn" onclick="bulkSendAll()" disabled>⚡ Send <span id="bulk-send-count">0</span></button>
+        </div>
       </div>
       <div class="sb-stats">
         <div class="sb-stat"><div class="ssv" id="ss-t">—</div><div class="ssl">Patients</div></div>
@@ -944,6 +976,7 @@ let pPage      = 0;
 const pPageSize = 10;
 let pSort      = 'time';
 let pFiltered  = [];  // current sorted+filtered list
+let selectedPatients = new Set(); // patient IDs checked for bulk send
 
 // ═══════════════════ API CLIENT ═══════════════════
 async function api(method, path, body = null) {
@@ -1086,6 +1119,32 @@ async function initApp() {
   document.getElementById('user-name').textContent = user.name;
   document.getElementById('user-ava').textContent = user.name[0];
 
+  // Drag-and-drop CSV onto the import strip
+  const strip = document.getElementById('sb-import-strip');
+  if (strip) {
+    strip.addEventListener('dragover', e => {
+      e.preventDefault();
+      strip.style.outline = '2px dashed var(--gold)';
+      strip.style.outlineOffset = '-2px';
+    });
+    strip.addEventListener('dragleave', () => {
+      strip.style.outline = '';
+    });
+    strip.addEventListener('drop', e => {
+      e.preventDefault();
+      strip.style.outline = '';
+      const file = e.dataTransfer.files[0];
+      if (file && (file.name.endsWith('.csv') || file.type === 'text/csv')) {
+        csvSelectedFile = file;
+        document.getElementById('sb-import-status').textContent = file.name;
+        document.getElementById('csv-upload-btn').style.display = 'inline-flex';
+        toast('ok', '📂', `${file.name} ready — click Sync to upload.`);
+      } else if (file) {
+        toast('err', '✕', 'Please drop a CSV file.');
+      }
+    });
+  }
+
   // Load everything in parallel
   await Promise.all([
     loadSchedule(),
@@ -1106,6 +1165,9 @@ async function loadSchedule() {
     schedule.forEach(p => {
       if (p.outreachStatus) sentMap[p.patientid] = p.outreachStatus;
     });
+
+    // Pre-select all patients for bulk send
+    selectedPatients = new Set(schedule.map(p => p.patientid));
 
     renderPList(schedule);
     updateStats();
@@ -1215,15 +1277,20 @@ function renderPList(list) {
 
   const page = pFiltered.slice(pPage * pPageSize, (pPage + 1) * pPageSize);
   el.innerHTML = page.map(p => {
-    const status = sentMap[p.patientid];
-    const isSent = status === 'sent';
-    const isQ    = status === 'queued';
-    const isSel  = sel && sel.patientid === p.patientid;
+    const status  = sentMap[p.patientid];
+    const isSent  = status === 'sent';
+    const isQ     = status === 'queued';
+    const isSel   = sel && sel.patientid === p.patientid;
+    const checked = selectedPatients.has(p.patientid);
+    const time    = p.appointmenttime || p.starttime || '—';
     return `<div class="pc${isSel ? ' sel' : ''}" onclick="selP('${p.patientid}')">
+      <input type="checkbox" class="pc-check" ${checked ? 'checked' : ''}
+        onclick="event.stopPropagation();togglePatientSel('${p.patientid}',this.checked)"
+        title="Include in bulk send">
       <div class="pc-ava">${p.firstname[0]}${p.lastname[0]}</div>
       <div class="pc-body">
         <div class="pc-name">${p.firstname} ${p.lastname}</div>
-        <div class="pc-sub">${p.starttime} · ${p.appointmenttype}</div>
+        <div class="pc-sub">${time} · ${p.appointmenttype || ''}</div>
         <div class="pc-tags">
           ${isSent ? '<span class="tag t-sent">✓ SENT</span>' : ''}
           ${isQ    ? '<span class="tag t-q">⏱ QUEUED</span>'  : ''}
@@ -1243,6 +1310,11 @@ function renderPList(list) {
   } else {
     pageEl.style.display = 'none';
   }
+
+  // Show bulk bar when there are patients to send to
+  const bulkBar = document.getElementById('sb-bulk');
+  if (bulkBar) bulkBar.style.display = total > 0 ? 'block' : 'none';
+  updateBulkBar();
 }
 
 function getCurrentFilter() {
@@ -1342,6 +1414,85 @@ function updateStats() {
   document.getElementById('ss-r').textContent = r + '%';
 }
 
+// ═══════════════════ BULK SEND ═══════════════════
+function togglePatientSel(patientId, checked) {
+  if (checked) selectedPatients.add(patientId);
+  else selectedPatients.delete(patientId);
+  updateBulkBar();
+}
+
+function bulkToggleAll(checked) {
+  const visible = pFiltered.slice(pPage * pPageSize, (pPage + 1) * pPageSize);
+  if (checked) visible.forEach(p => selectedPatients.add(p.patientid));
+  else visible.forEach(p => selectedPatients.delete(p.patientid));
+  renderPList(getCurrentFilter());
+}
+
+function updateBulkBar() {
+  const count     = selectedPatients.size;
+  const countEl   = document.getElementById('bulk-count');
+  const sendCount = document.getElementById('bulk-send-count');
+  const sendBtn   = document.getElementById('bulk-send-btn');
+  const allCb     = document.getElementById('bulk-select-all');
+  if (countEl)   countEl.textContent = `${count} selected`;
+  if (sendCount) sendCount.textContent = count;
+  if (sendBtn)   sendBtn.disabled = count === 0;
+  if (allCb) {
+    const visible   = pFiltered.slice(pPage * pPageSize, (pPage + 1) * pPageSize);
+    const allCheck  = visible.length > 0 && visible.every(p => selectedPatients.has(p.patientid));
+    allCb.checked       = allCheck;
+    allCb.indeterminate = !allCheck && visible.some(p => selectedPatients.has(p.patientid));
+  }
+}
+
+async function bulkSendAll() {
+  const patientIds = [...selectedPatients];
+  if (!patientIds.length) { toast('warn', '⚠', 'No patients selected.'); return; }
+
+  const channel    = document.getElementById('bulk-channel').value;
+  const templateId = document.getElementById('bulk-template').value;
+  const pr         = document.getElementById('s-pname')?.value || 'Your Practice';
+  const link       = document.getElementById('s-glink')?.value || '#';
+
+  const btn   = document.getElementById('bulk-send-btn');
+  const total = patientIds.length;
+  btn.disabled = true;
+
+  let sent = 0, failed = 0;
+
+  for (const patientId of patientIds) {
+    const p = schedule.find(sp => sp.patientid === patientId);
+    if (!p) continue;
+
+    const arr  = channel === 'sms' ? SMS_T : EMAIL_T;
+    const body = channel === 'sms' ? arr[templateId](p, pr, link) : arr[templateId].body(p, pr, link);
+    const subj = channel === 'email' ? arr[templateId].subj(p, pr) : null;
+
+    try {
+      const res = await api('POST', '/api/outreach/send', {
+        patientId: p.patientid, appointmentId: p.appointmentid,
+        channel, templateId, timing: 'now',
+        customBody: body, customSubject: subj, chartNote: false,
+      });
+      sentMap[p.patientid] = res.status === 'sent' ? 'sent' : 'queued';
+      sent++;
+    } catch (e) {
+      failed++;
+    }
+    btn.textContent = `Sending ${sent + failed}/${total}…`;
+  }
+
+  selectedPatients.clear();
+  renderPList(getCurrentFilter());
+  updateStats();
+
+  if (failed > 0) {
+    toast('warn', '⚠', `Bulk send: ${sent} sent · ${failed} failed.`);
+  } else {
+    toast('ok', '✓', `Sent review requests to ${sent} patients.`);
+  }
+}
+
 // ═══════════════════ COMPOSER ═══════════════════
 const SMS_T = {
   warm:    (p, pr, l) => `Hi ${p.firstname}! We hope your visit went well today. A quick Google review would mean the world to us — it helps others find great care. ${l}`,
@@ -1383,8 +1534,8 @@ function renderCX() {
       <div style="flex:1;">
         <div class="cx-pname">${p.firstname} ${p.lastname}</div>
         <div class="cx-pmeta">
-          <span>🕐 ${p.starttime}</span>
-          <span>🏥 ${p.appointmenttype}</span>
+          <span>🕐 ${p.appointmenttime || p.starttime || '—'}</span>
+          <span>🏥 ${p.appointmenttype || '—'}</span>
           <span>📱 ${p.mobilephone || '—'}</span>
           <span>✉ ${p.email || '—'}</span>
           ${!p.canContact ? '<span style="color:#E07080;">⚠ No contact info</span>' : ''}
