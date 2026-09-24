@@ -33,6 +33,43 @@ html,body{height:100%;overflow:hidden;}
 body{font-family:var(--sans);background:var(--ink);color:var(--text);font-size:13px;display:flex;flex-direction:column;}
 
 /* ── LOGIN SCREEN ── */
+/* ── TRIAL ENFORCEMENT ── */
+#trial-expired-overlay{
+  position:fixed;inset:0;background:rgba(10,14,26,.92);backdrop-filter:blur(6px);
+  display:none;align-items:center;justify-content:center;
+  z-index:10000;
+}
+#trial-expired-overlay.visible{display:flex;}
+.trial-card{
+  background:var(--ink2);border:1px solid var(--border);
+  border-radius:20px;padding:48px 40px;max-width:420px;width:90%;
+  text-align:center;box-shadow:0 16px 60px rgba(0,0,0,.25);
+}
+.trial-icon{font-size:44px;margin-bottom:16px;line-height:1;}
+.trial-title{font-family:var(--serif);font-size:22px;font-weight:700;color:var(--text);margin-bottom:10px;}
+.trial-body{font-size:13px;color:var(--text2);line-height:1.65;margin-bottom:28px;}
+.trial-cta{
+  display:block;width:100%;padding:13px 20px;
+  background:linear-gradient(135deg,var(--gold),var(--gold2));
+  color:#fff;border:none;border-radius:10px;
+  font-size:14px;font-weight:700;cursor:pointer;letter-spacing:.02em;
+  margin-bottom:12px;
+}
+.trial-cta:hover{opacity:.9;}
+.trial-contact{font-size:12px;color:var(--text3);}
+.trial-contact a{color:var(--gold);text-decoration:none;}
+
+/* ── TRIAL COUNTDOWN BANNER ── */
+#trial-banner{
+  display:none;
+  background:linear-gradient(90deg,#1a3a6b,#1B5FC4);
+  color:#fff;font-size:12px;font-weight:500;
+  padding:7px 18px;text-align:center;letter-spacing:.01em;
+  position:relative;z-index:100;flex-shrink:0;
+}
+#trial-banner strong{font-weight:700;}
+#trial-banner.visible{display:block;}
+
 .login-screen{
   position:fixed;inset:0;background:var(--ink);
   display:flex;align-items:center;justify-content:center;
@@ -76,7 +113,7 @@ body{font-family:var(--sans);background:var(--ink);color:var(--text);font-size:1
 .login-demo{text-align:center;margin-top:16px;font-size:11px;color:var(--text3);}
 
 /* ── APP SHELL ── */
-.app{display:none;flex-direction:column;height:100vh;}
+.app{display:none;flex-direction:column;height:100vh;overflow:hidden;}
 .app.visible{display:flex;}
 
 /* ── TOPBAR ── */
@@ -558,6 +595,23 @@ input.fi::placeholder{color:var(--text3);}
 </head>
 <body>
 
+<!-- TRIAL EXPIRED OVERLAY -->
+<div id="trial-expired-overlay">
+  <div class="trial-card">
+    <div class="trial-icon">⏳</div>
+    <div class="trial-title" id="trial-overlay-title">Your Free Trial Has Ended</div>
+    <div class="trial-body" id="trial-overlay-body">
+      Your 3-month free trial has ended. To continue using PracticePing and keep your patient outreach running, please activate your subscription.
+    </div>
+    <button class="trial-cta" onclick="window.open('mailto:info@waveresolutions.com?subject=PracticePing%20Subscription%20Activation','_blank')">
+      Activate My Subscription
+    </button>
+    <div class="trial-contact">
+      Questions? Email <a href="mailto:info@waveresolutions.com">info@waveresolutions.com</a>
+    </div>
+  </div>
+</div>
+
 <!-- SESSION TIMEOUT WARNING -->
 <div id="session-warning" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;display:none;align-items:center;justify-content:center;">
   <div style="background:var(--ink2);border:1px solid var(--border);border-radius:16px;padding:32px;max-width:360px;width:90%;text-align:center;box-shadow:0 8px 32px rgba(0,0,0,.15);">
@@ -592,6 +646,9 @@ input.fi::placeholder{color:var(--text3);}
 
 <!-- APP -->
 <div class="app" id="app">
+
+  <!-- TRIAL COUNTDOWN BANNER -->
+  <div id="trial-banner"></div>
 
   <!-- TOPBAR -->
   <div class="topbar">
@@ -1025,9 +1082,50 @@ async function api(method, path, body = null) {
     throw new Error('Session expired');
   }
 
+  if (res.status === 402) {
+    const data = await res.json().catch(() => ({}));
+    showTrialOverlay(data);
+    throw new Error(data.message || 'Subscription required');
+  }
+
+  // Show / update trial countdown banner
+  const daysLeft = res.headers.get('X-Trial-Days-Left');
+  if (daysLeft !== null) {
+    const d = parseInt(daysLeft, 10);
+    if (d <= 14) {
+      const banner = document.getElementById('trial-banner');
+      if (banner) {
+        banner.textContent = '';
+        const msg = document.createElement('span');
+        msg.innerHTML = `<strong>${d} day${d === 1 ? '' : 's'} left in your free trial.</strong> Activate your subscription to avoid any interruption — <a href="mailto:info@waveresolutions.com" style="color:#9fc9ff;">info@waveresolutions.com</a>`;
+        banner.appendChild(msg);
+        banner.classList.add('visible');
+      }
+    }
+  }
+
   const data = await res.json();
   if (!res.ok) throw new Error(data.error || 'Request failed');
   return data;
+}
+
+function showTrialOverlay(data) {
+  const overlay = document.getElementById('trial-expired-overlay');
+  const title   = document.getElementById('trial-overlay-title');
+  const body    = document.getElementById('trial-overlay-body');
+  if (!overlay) return;
+
+  if (data.error === 'subscription_cancelled') {
+    title.textContent = 'Subscription Cancelled';
+    body.textContent  = 'Your PracticePing subscription has been cancelled. Please contact us to reactivate your account and restore access.';
+  } else {
+    title.textContent = 'Your Free Trial Has Ended';
+    body.textContent  = 'Your 3-month free trial has ended. To continue using PracticePing and keep your patient outreach running, please activate your subscription.';
+  }
+
+  overlay.classList.add('visible');
+  // Stop background polling by clearing all timers
+  stopIdleTimer();
 }
 
 // ═══════════════════ AUTH ═══════════════════
