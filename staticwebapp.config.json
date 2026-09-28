@@ -5,12 +5,20 @@
       "allowedRoles": ["anonymous"]
     },
     {
+      "route": "/privacy.html",
+      "allowedRoles": ["anonymous"]
+    },
+    {
+      "route": "/terms.html",
+      "allowedRoles": ["anonymous"]
+    },
+    {
       "route": "/*",
       "rewrite": "/index.html"
     }
   ],
   "navigationFallback": {
     "rewrite": "/index.html",
-    "exclude": ["/request.html", "/*.{css,js,png,jpg,svg,ico,json}"]
+    "exclude": ["/request.html", "/privacy.html", "/terms.html", "/*.{css,js,png,jpg,svg,ico,json}"]
   }
 }
