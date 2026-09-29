@@ -30,6 +30,7 @@
   .consent{display:flex;align-items:flex-start;gap:10px;margin:20px 0 24px;padding:14px;background:#F4F6FB;border-radius:8px;}
   .consent input[type=checkbox]{width:16px;height:16px;margin-top:2px;flex-shrink:0;accent-color:#9A6B1F;}
   .consent p{font-size:12px;color:#4A5572;line-height:1.5;}
+  .consent a{color:#9A6B1F;}
   .btn{width:100%;background:#9A6B1F;color:#fff;border:none;border-radius:10px;padding:13px;font-size:15px;font-weight:600;cursor:pointer;transition:background .15s;}
   .btn:hover{background:#C8922A;}
   .btn:disabled{opacity:.6;cursor:not-allowed;}
@@ -149,7 +150,7 @@
     <!-- CONSENT -->
     <div class="consent">
       <input type="checkbox" id="f-consent">
-      <p>I consent to receive text messages from this practice regarding my appointment request. Message and data rates may apply. SMS is not a fully secure channel and should not be used for sensitive health details.</p>
+      <p>I agree to receive text messages from <strong class="consent-practice">this practice</strong>, sent through PracticePing, about my appointment request (such as available appointment times). Message frequency varies. Msg &amp; data rates may apply. Reply STOP to opt out or HELP for help. Consent is optional and not required to request an appointment. SMS is not a fully secure channel and should not be used for sensitive health details. See the <a href="https://www.practiceping.com/terms.html" target="_blank" rel="noopener">Terms</a> and <a href="https://www.practiceping.com/privacy.html" target="_blank" rel="noopener">Privacy Policy</a>.</p>
     </div>
 
     <button class="btn" id="f-btn" onclick="submitRequest()">Submit Request</button>
@@ -187,6 +188,9 @@
     if (brandingRes) {
       document.getElementById('practice-name').textContent = brandingRes.displayName || 'Our Practice';
       document.title = `Request an Appointment — ${brandingRes.displayName || 'Our Practice'}`;
+      if (brandingRes.displayName) {
+        document.querySelectorAll('.consent-practice').forEach(el => { el.textContent = brandingRes.displayName; });
+      }
 
       if (brandingRes.logoUrl) {
         document.getElementById('logo-wrap').innerHTML =
