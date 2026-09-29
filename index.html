@@ -388,6 +388,12 @@ select.fi:focus{border-color:rgba(200,146,42,.4);}
 .sr-attest input{margin-top:3px;accent-color:var(--gold);flex-shrink:0;}
 .sr-attest.bad{border-color:rgba(192,55,74,.5);}
 .sr-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
+.sr-types{display:flex;flex-direction:column;gap:8px;}
+.sr-type{display:flex;gap:10px;align-items:flex-start;padding:11px 12px;background:var(--ink3);border:1.5px solid var(--border2);border-radius:8px;cursor:pointer;}
+.sr-type:has(input:checked){border-color:rgba(200,146,42,.55);}
+.sr-type input{margin-top:3px;accent-color:var(--gold);flex-shrink:0;}
+.sr-type strong{display:block;font-size:12px;color:var(--text);font-weight:600;}
+.sr-type em{display:block;font-style:normal;font-size:11px;color:var(--text3);line-height:1.55;margin-top:2px;}
 .sr-note{font-size:11px;color:var(--text3);}
 .sr-status{padding:12px 14px;border-radius:8px;background:var(--ink3);border:1px solid var(--border);font-size:12px;color:var(--text2);line-height:1.6;}
 .sr-status strong{color:var(--text);}
@@ -929,16 +935,26 @@ select.fi:focus{border-color:rgba(200,146,42,.4);}
               <div class="sr-status" id="sr-status" style="display:none;"></div>
 
               <form id="sr-form" onsubmit="return false;" style="display:flex;flex-direction:column;gap:12px;">
-                <div class="sr-sec">Business</div>
+                <div class="sr-sec">How is your practice registered?</div>
+                <div class="sr-types" id="sr-types">
+                  <label class="sr-type"><input type="radio" name="registrationType" value="ein" onchange="srApplyType()"><span><strong>US business with an EIN</strong><em>Most practices. Standard carrier registration using your federal Tax ID.</em></span></label>
+                  <label class="sr-type"><input type="radio" name="registrationType" value="sole_proprietor" onchange="srApplyType()"><span><strong>Sole proprietor — no EIN</strong><em>US or Canada only. Registered under your own name. Limited to one phone number and lower daily volume; your mobile receives a verification code.</em></span></label>
+                  <label class="sr-type"><input type="radio" name="registrationType" value="other_id" onchange="srApplyType()"><span><strong>Other business registration number</strong><em>Businesses outside the US, or identified by a DUNS number. US businesses that have an EIN should use the first option.</em></span></label>
+                </div>
+                <div class="sr-field" data-f="registrationType"><div class="sr-err"></div></div>
+
+                <div class="sr-sec" id="sr-sec-business">Business</div>
                 <div class="sr-grid">
-                  <div class="sr-field full" data-f="legalName"><div class="fi-lbl">Legal business name</div><input class="fi" name="legalName" maxlength="255" placeholder="Westside Medical Group, LLC"><div class="sr-help">Exactly as registered with the IRS.</div><div class="sr-err"></div></div>
+                  <div class="sr-field full" data-f="legalName"><div class="fi-lbl" id="sr-lbl-legal">Legal business name</div><input class="fi" name="legalName" maxlength="255" placeholder="Westside Medical Group, LLC"><div class="sr-help" id="sr-help-legal">Exactly as registered with the IRS.</div><div class="sr-err"></div></div>
                   <div class="sr-field" data-f="dbaName"><div class="fi-lbl">Name patients know you by (optional)</div><input class="fi" name="dbaName" maxlength="255" placeholder="Westside Medical"><div class="sr-err"></div></div>
-                  <div class="sr-field" data-f="ein"><div class="fi-lbl">EIN (Tax ID)</div><input class="fi" name="ein" inputmode="numeric" autocomplete="off" maxlength="10" placeholder="XX-XXXXXXX"><div class="sr-help" id="sr-ein-help">Stored encrypted. Only the last 4 digits are shown here.</div><div class="sr-err"></div></div>
-                  <div class="sr-field" data-f="businessType"><div class="fi-lbl">Business type</div><select class="fi" name="businessType"></select><div class="sr-err"></div></div>
-                  <div class="sr-field" data-f="companyType"><div class="fi-lbl">Company type</div><select class="fi" name="companyType" onchange="srToggleStock()"></select><div class="sr-err"></div></div>
+                  <div class="sr-field sr-not-ein" data-f="country"><div class="fi-lbl">Country</div><select class="fi" name="country" onchange="srApplyType()"></select><div class="sr-err"></div></div>
+                  <div class="sr-field sr-only-other" data-f="taxIdType"><div class="fi-lbl">Registration number type</div><select class="fi" name="taxIdType" onchange="srApplyType()"></select><div class="sr-err"></div></div>
+                  <div class="sr-field sr-not-sole" data-f="taxId"><div class="fi-lbl" id="sr-lbl-taxid">EIN (Tax ID)</div><input class="fi" name="taxId" autocomplete="off" maxlength="40" placeholder="XX-XXXXXXX"><div class="sr-help">Stored encrypted. Only the last 4 characters are shown here.</div><div class="sr-err"></div></div>
+                  <div class="sr-field sr-not-sole" data-f="businessType"><div class="fi-lbl">Business type</div><select class="fi" name="businessType"></select><div class="sr-err"></div></div>
+                  <div class="sr-field sr-not-sole" data-f="companyType"><div class="fi-lbl">Company type</div><select class="fi" name="companyType" onchange="srApplyType()"></select><div class="sr-err"></div></div>
                   <div class="sr-field sr-stock" data-f="stockTicker" style="display:none;"><div class="fi-lbl">Stock ticker</div><input class="fi" name="stockTicker" maxlength="20"><div class="sr-err"></div></div>
                   <div class="sr-field sr-stock" data-f="stockExchange" style="display:none;"><div class="fi-lbl">Stock exchange</div><input class="fi" name="stockExchange" maxlength="20" placeholder="NASDAQ"><div class="sr-err"></div></div>
-                  <div class="sr-field full" data-f="website"><div class="fi-lbl">Practice website</div><input class="fi" name="website" type="url" maxlength="500" placeholder="https://westsidemedical.com"><div class="sr-help">Must be live and show your practice name.</div><div class="sr-err"></div></div>
+                  <div class="sr-field full" data-f="website"><div class="fi-lbl" id="sr-lbl-website">Practice website</div><input class="fi" name="website" type="url" maxlength="500" placeholder="https://westsidemedical.com"><div class="sr-help">Must be live and show your practice name.</div><div class="sr-err"></div></div>
                 </div>
 
                 <div class="sr-sec">Business address</div>
@@ -947,20 +963,20 @@ select.fi:focus{border-color:rgba(200,146,42,.4);}
                   <div class="sr-field full" data-f="street2"><div class="fi-lbl">Suite / unit (optional)</div><input class="fi" name="street2" maxlength="255" autocomplete="address-line2"><div class="sr-err"></div></div>
                   <div class="sr-field" data-f="city"><div class="fi-lbl">City</div><input class="fi" name="city" maxlength="120" autocomplete="address-level2"><div class="sr-err"></div></div>
                   <div class="sr-grid" style="gap:12px;">
-                    <div class="sr-field" data-f="state"><div class="fi-lbl">State</div><input class="fi" name="state" maxlength="2" placeholder="TX" autocomplete="address-level1" style="text-transform:uppercase;"><div class="sr-err"></div></div>
-                    <div class="sr-field" data-f="postalCode"><div class="fi-lbl">ZIP</div><input class="fi" name="postalCode" maxlength="10" inputmode="numeric" autocomplete="postal-code"><div class="sr-err"></div></div>
+                    <div class="sr-field" data-f="state"><div class="fi-lbl" id="sr-lbl-state">State</div><input class="fi" name="state" maxlength="60" placeholder="TX" autocomplete="address-level1"><div class="sr-err"></div></div>
+                    <div class="sr-field" data-f="postalCode"><div class="fi-lbl" id="sr-lbl-postal">ZIP</div><input class="fi" name="postalCode" maxlength="20" autocomplete="postal-code"><div class="sr-err"></div></div>
                   </div>
                 </div>
 
-                <div class="sr-sec">Authorized representative</div>
-                <div class="sr-help" style="margin-top:-6px;">Someone who can speak for the practice. Carriers may contact this person to confirm the registration.</div>
+                <div class="sr-sec" id="sr-sec-rep">Authorized representative</div>
+                <div class="sr-help" style="margin-top:-6px;" id="sr-help-rep">Someone who can speak for the practice. Carriers may contact this person to confirm the registration.</div>
                 <div class="sr-grid">
                   <div class="sr-field" data-f="repFirstName"><div class="fi-lbl">First name</div><input class="fi" name="repFirstName" maxlength="100" autocomplete="given-name"><div class="sr-err"></div></div>
                   <div class="sr-field" data-f="repLastName"><div class="fi-lbl">Last name</div><input class="fi" name="repLastName" maxlength="100" autocomplete="family-name"><div class="sr-err"></div></div>
-                  <div class="sr-field" data-f="repTitle"><div class="fi-lbl">Job title</div><input class="fi" name="repTitle" maxlength="100" placeholder="Practice Manager"><div class="sr-err"></div></div>
-                  <div class="sr-field" data-f="repJobPosition"><div class="fi-lbl">Position</div><select class="fi" name="repJobPosition"></select><div class="sr-err"></div></div>
+                  <div class="sr-field sr-not-sole" data-f="repTitle"><div class="fi-lbl">Job title</div><input class="fi" name="repTitle" maxlength="100" placeholder="Practice Manager"><div class="sr-err"></div></div>
+                  <div class="sr-field sr-not-sole" data-f="repJobPosition"><div class="fi-lbl">Position</div><select class="fi" name="repJobPosition"></select><div class="sr-err"></div></div>
                   <div class="sr-field" data-f="repEmail"><div class="fi-lbl">Email</div><input class="fi" name="repEmail" type="email" maxlength="255" autocomplete="email"><div class="sr-err"></div></div>
-                  <div class="sr-field" data-f="repPhone"><div class="fi-lbl">Phone</div><input class="fi" name="repPhone" type="tel" maxlength="20" autocomplete="tel" placeholder="(214) 555-0100"><div class="sr-err"></div></div>
+                  <div class="sr-field" data-f="repPhone"><div class="fi-lbl" id="sr-lbl-phone">Phone</div><input class="fi" name="repPhone" type="tel" maxlength="24" autocomplete="tel" placeholder="(214) 555-0100"><div class="sr-help" id="sr-help-phone" style="display:none;">Must be a mobile number — it receives a one-time verification code during registration.</div><div class="sr-err"></div></div>
                 </div>
 
                 <label class="sr-attest" id="sr-attest-wrap">
@@ -2162,14 +2178,82 @@ const SR_STATUS = {
 };
 const SR_LOCKED = ['submitted', 'brand_pending', 'brand_approved', 'campaign_pending', 'approved'];
 
-function srFill(select, values, labels = {}) {
-  select.innerHTML = '<option value="">Select…</option>' +
+// ISO 3166 country codes; names come from the browser's locale data
+const SR_COUNTRY_CODES = ('US CA GB AU NZ IE IN IL AE SA QA SG HK JP KR PH MY TH ID VN PK BD LK NP ' +
+  'DE FR ES IT PT NL BE LU CH AT SE NO DK FI IS PL CZ SK HU RO BG GR HR SI RS EE LV LT UA TR CY MT ' +
+  'MX BR AR CL CO PE EC UY PY BO VE CR PA GT HN SV NI DO JM TT BS BB PR ZA NG KE GH EG MA TN ET UG TZ ' +
+  'RW ZM ZW BW NA MU').split(' ');
+const SR_COMPANY_LABELS = { private: 'Private', public: 'Public (stock-listed)', 'non-profit': 'Non-profit', government: 'Government' };
+const SR_JOB_LABELS     = { GM: 'General Manager', VP: 'Vice President' };
+let srOptions = null;
+let srSaved   = {};
+
+function srFill(select, values, labels = {}, { placeholder = true } = {}) {
+  const current = select.value;
+  select.innerHTML = (placeholder ? '<option value="">Select…</option>' : '') +
     values.map(v => `<option value="${v}">${labels[v] || v}</option>`).join('');
+  if (values.includes(current)) select.value = current;
 }
 
-function srToggleStock() {
-  const pub = document.querySelector('#sr-form [name=companyType]').value === 'public';
-  document.querySelectorAll('.sr-stock').forEach(el => { el.style.display = pub ? '' : 'none'; });
+function srCountryName(code) {
+  try { return new Intl.DisplayNames(['en'], { type: 'region' }).of(code); } catch { return code; }
+}
+
+function srType() {
+  return document.querySelector('#sr-form [name=registrationType]:checked')?.value || 'ein';
+}
+
+function srShow(selector, on) {
+  document.querySelectorAll(selector).forEach(el => { el.style.display = on ? '' : 'none'; });
+}
+
+function srSetText(id, text) { document.getElementById(id).textContent = text; }
+
+/** Show the fields that apply to the chosen registration path. */
+function srApplyType() {
+  const form  = document.getElementById('sr-form');
+  const type  = srType();
+  const sole  = type === 'sole_proprietor';
+  const other = type === 'other_id';
+
+  // Country: fixed to US for EIN, US/Canada for sole proprietors, any for other IDs
+  const codes = sole ? srOptions.solePropCountries : SR_COUNTRY_CODES;
+  srFill(form.country, codes, Object.fromEntries(codes.map(c => [c, srCountryName(c)])), { placeholder: false });
+  if (!form.country.value) form.country.value = 'US';
+  const country = type === 'ein' ? 'US' : form.country.value;
+
+  srShow('#sr-form .sr-not-sole', !sole);
+  srShow('#sr-form .sr-not-ein', type !== 'ein');
+  srShow('#sr-form .sr-only-other', other);
+  srShow('#sr-form .sr-stock', !sole && form.companyType.value === 'public');
+
+  srSetText('sr-sec-business', sole ? 'You' : 'Business');
+  srSetText('sr-lbl-legal', sole ? 'Your legal name (or business name)' : 'Legal business name');
+  srSetText('sr-help-legal', sole ? 'The name carriers will verify for you as a sole proprietor.'
+    : country === 'US' ? 'Exactly as registered with the IRS.' : 'Exactly as on your official business registration.');
+  srSetText('sr-lbl-website', sole ? 'Website (optional)' : 'Practice website');
+  srSetText('sr-sec-rep', sole ? 'Contact details' : 'Authorized representative');
+  srShow('#sr-help-rep', !sole);
+  srSetText('sr-lbl-phone', sole ? 'Mobile phone' : 'Phone');
+  srShow('#sr-help-phone', sole);
+  srSetText('sr-lbl-state', country === 'US' ? 'State' : country === 'CA' ? 'Province' : 'State / region');
+  srSetText('sr-lbl-postal', country === 'US' ? 'ZIP' : 'Postal code');
+  form.state.placeholder    = country === 'US' ? 'TX' : country === 'CA' ? 'ON' : '';
+  form.repPhone.placeholder = country === 'US' ? '(214) 555-0100' : '+44 20 7946 0000';
+
+  const idType = type === 'ein' ? 'EIN' : form.taxIdType.value;
+  srSetText('sr-lbl-taxid', type === 'ein' ? 'EIN (Tax ID)'
+    : idType ? (srOptions.taxIdTypes[idType] || 'Registration number').replace(/^[^:]+:\s*/, '')
+    : 'Registration number');
+  srSetTaxIdPlaceholder(srSaved);
+}
+
+function srSetTaxIdPlaceholder(r) {
+  const form   = document.getElementById('sr-form');
+  const idType = srType() === 'ein' ? 'EIN' : form.taxIdType.value;
+  const saved  = r.taxIdLast4 && r.taxIdType === idType;
+  form.taxId.placeholder = saved ? `•••••${r.taxIdLast4}  (enter to change)`
+    : idType === 'EIN' ? 'XX-XXXXXXX' : idType === 'DUNS' ? '9 digits' : '';
 }
 
 function srShowErrors(fields = {}) {
@@ -2179,7 +2263,7 @@ function srShowErrors(fields = {}) {
     el.querySelector('.sr-err').textContent = msg || '';
   });
   document.getElementById('sr-attest-wrap').classList.toggle('bad', !!fields.attest);
-  const first = document.querySelector('#sr-form .sr-field.bad .fi');
+  const first = [...document.querySelectorAll('#sr-form .sr-field.bad .fi')].find(el => el.offsetParent);
   if (first) first.focus();
 }
 
@@ -2187,18 +2271,23 @@ async function loadSmsRegistration() {
   try {
     const data = await api('GET', '/api/sms-registration');
     const form = document.getElementById('sr-form');
-    const o = data.options;
-    srFill(form.businessType, o.businessTypes);
-    srFill(form.companyType, o.companyTypes, { private: 'Private', public: 'Public (stock-listed)', 'non-profit': 'Non-profit', government: 'Government' });
-    srFill(form.repJobPosition, o.jobPositions, { GM: 'General Manager', VP: 'Vice President' });
+    const o = srOptions = data.options;
+    srFill(form.businessType, o.businessTypes.filter(t => t !== 'Sole Proprietorship'));
+    srFill(form.companyType, o.companyTypes, SR_COMPANY_LABELS);
+    srFill(form.repJobPosition, o.jobPositions, SR_JOB_LABELS);
+    srFill(form.taxIdType, Object.keys(o.taxIdTypes), o.taxIdTypes);
 
-    const r = data.registration || {};
+    const r = srSaved = data.registration || {};
+    const type = r.registrationType || 'ein';
+    form.querySelector(`[name=registrationType][value="${type}"]`).checked = true;
+    srApplyType();  // builds the country list for this path before values are set
     for (const el of form.elements) {
-      if (el.name && el.name !== 'ein' && r[el.name] != null) el.value = r[el.name];
+      if (!el.name || el.type === 'radio' || el.name === 'taxId') continue;
+      if (r[el.name] != null) el.value = r[el.name];
     }
-    form.ein.value = '';
-    form.ein.placeholder = r.einLast4 ? `••-•••${r.einLast4}  (enter to change)` : 'XX-XXXXXXX';
-    srToggleStock();
+    if (r.businessType === 'Sole Proprietorship') form.businessType.value = '';
+    form.taxId.value = '';
+    srApplyType();
     srShowErrors();
     srRenderStatus(r.status || 'none', r);
   } catch (e) {
@@ -2230,9 +2319,17 @@ function srRenderStatus(status, r = {}) {
 
 async function saveSmsRegistration(submit) {
   const form = document.getElementById('sr-form');
-  const body = {};
-  for (const el of form.elements) if (el.name) body[el.name] = el.value.trim();
-  if (!body.ein) delete body.ein;  // blank means keep the saved EIN
+  const type = srType();
+  const body = { registrationType: type };
+  for (const el of form.elements) {
+    if (el.name && el.type !== 'radio') body[el.name] = el.value.trim();
+  }
+  if (type === 'ein') { body.country = 'US'; body.taxIdType = ''; }
+  if (type === 'sole_proprietor') {
+    delete body.taxId;
+    Object.assign(body, { taxIdType: '', businessType: '', companyType: '', repTitle: '', repJobPosition: '' });
+  }
+  if (!body.taxId) delete body.taxId;  // blank means keep the saved ID
   if (body.companyType !== 'public') { body.stockTicker = ''; body.stockExchange = ''; }
   if (submit) {
     body.submit = true;
@@ -2245,9 +2342,9 @@ async function saveSmsRegistration(submit) {
   try {
     const data = await api('PUT', '/api/sms-registration', body);
     srShowErrors();
-    const r = data.registration;
-    form.ein.value = '';
-    form.ein.placeholder = r.einLast4 ? `••-•••${r.einLast4}  (enter to change)` : 'XX-XXXXXXX';
+    const r = srSaved = data.registration;
+    form.taxId.value = '';
+    srSetTaxIdPlaceholder(r);
     srRenderStatus(r.status, r);
     toast('ok', '✓', submit
       ? 'Submitted — we\'ll email you when patient texting is approved.'
