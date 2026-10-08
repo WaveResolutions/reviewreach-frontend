@@ -41,6 +41,18 @@ body{font-family:var(--sans);background:var(--ink);color:var(--text);font-size:1
   z-index:10000;
 }
 #trial-expired-overlay.visible{display:flex;}
+#pw-overlay{
+  position:fixed;inset:0;background:rgba(10,14,26,.92);backdrop-filter:blur(6px);
+  display:none;align-items:center;justify-content:center;
+  z-index:10001;padding:16px;overflow:auto;
+}
+#pw-overlay.visible{display:flex;}
+.pw-card{
+  background:var(--ink2);border:1px solid var(--border);
+  border-radius:20px;padding:36px 32px;max-width:420px;width:100%;
+  box-shadow:0 16px 60px rgba(0,0,0,.25);
+}
+.pw-hint{font-size:11px;color:var(--text3);margin-top:5px;line-height:1.5;}
 .trial-card{
   background:var(--ink2);border:1px solid var(--border);
   border-radius:20px;padding:48px 40px;max-width:420px;width:90%;
@@ -661,16 +673,40 @@ select.fi:focus{border-color:rgba(200,146,42,.4);}
     <div class="login-sub">Your practice, always connected</div>
     <div class="login-field">
       <label class="login-label">Email</label>
-      <input type="email" class="login-input" id="l-email" placeholder="you@practice.com" value="demo@westside.com">
+      <input type="email" class="login-input" id="l-email" placeholder="you@practice.com" autocomplete="username" onkeydown="if(event.key==='Enter')doLogin()">
     </div>
     <div class="login-field">
       <label class="login-label">Password</label>
-      <input type="password" class="login-input" id="l-pass" placeholder="••••••••" value="demo1234">
+      <input type="password" class="login-input" id="l-pass" placeholder="••••••••" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()">
     </div>
     <button class="login-btn" id="l-btn" onclick="doLogin()">Sign In →</button>
     <div class="login-error" id="l-err" style="display:none;"></div>
-    <div class="login-demo">Demo credentials pre-filled</div>
   </div>
+</div>
+
+<!-- SET-YOUR-PASSWORD (first login after an admin created or reset the account) -->
+<div id="pw-overlay" role="dialog" aria-modal="true" aria-labelledby="pw-title">
+  <form class="pw-card" id="pw-form" onsubmit="return submitForcedPassword(event)">
+    <div class="trial-icon">🔐</div>
+    <div class="trial-title" id="pw-title" style="text-align:center;">Set your password</div>
+    <div class="trial-body" style="margin-bottom:20px;text-align:center;">For your security, choose your own password before you continue. You'll use it from now on.</div>
+    <div class="login-field" id="pw-cur-wrap">
+      <label class="login-label" for="pw-cur">Temporary password</label>
+      <input type="password" class="login-input" id="pw-cur" autocomplete="current-password">
+    </div>
+    <div class="login-field">
+      <label class="login-label" for="pw-new">New password</label>
+      <input type="password" class="login-input" id="pw-new" autocomplete="new-password">
+      <div class="pw-hint">At least 12 characters. A short phrase of a few words works well. Don't include your email address.</div>
+    </div>
+    <div class="login-field">
+      <label class="login-label" for="pw-new2">Confirm new password</label>
+      <input type="password" class="login-input" id="pw-new2" autocomplete="new-password">
+    </div>
+    <button class="login-btn" id="pw-btn" type="submit">Set password and continue</button>
+    <div class="login-error" id="pw-err" style="display:none;"></div>
+    <div style="text-align:center;margin-top:14px;"><a href="#" onclick="closePasswordOverlay();doLogout();return false;" style="font-size:11px;color:var(--text3);">Sign out</a></div>
+  </form>
 </div>
 
 <!-- APP -->
@@ -924,6 +960,20 @@ select.fi:focus{border-color:rgba(200,146,42,.4);}
       <div class="view" id="view-settings">
         <div class="st-scroll">
           <div class="view-title" style="margin-bottom:20px;">Settings</div>
+          <!-- ACCOUNT SECURITY -->
+          <div class="st-card" id="pw-card">
+            <div class="st-head"><div class="st-htitle">🔐 Account Security</div></div>
+            <div class="st-body">
+              <form onsubmit="return submitPasswordChange(event)" style="display:flex;flex-direction:column;gap:12px;">
+                <div><div class="fi-lbl">Current password</div><input class="fi" type="password" id="pc-cur" autocomplete="current-password"></div>
+                <div><div class="fi-lbl">New password</div><input class="fi" type="password" id="pc-new" autocomplete="new-password"><div class="pw-hint">At least 12 characters. A short phrase of a few words works well. Don't include your email address.</div></div>
+                <div><div class="fi-lbl">Confirm new password</div><input class="fi" type="password" id="pc-new2" autocomplete="new-password"></div>
+                <div class="login-error" id="pc-err" style="display:none;text-align:left;margin-top:0;"></div>
+                <div><button class="btn-sm" id="pc-btn" type="submit">Change Password</button></div>
+                <div class="pw-hint">Changing your password signs you out of any other devices.</div>
+              </form>
+            </div>
+          </div>
           <!-- PATIENT TEXTING REGISTRATION (A2P 10DLC brand) -->
           <div class="st-card" id="sr-card">
             <div class="st-head">
@@ -1176,7 +1226,27 @@ async function api(method, path, body = null) {
   const res = await fetch(`${API_BASE}${path}`, opts);
 
   if (res.status === 401) {
+    // Sign-in and password-change failures carry their own message ("Invalid credentials", ...).
+    if (path.startsWith('/api/auth/')) {
+      const d = await res.json().catch(() => ({}));
+      throw new Error(d.error || 'Sign-in failed');
+    }
+    // Token expired, or the password was changed/reset elsewhere: return to the sign-in screen.
+    if (token) {
+      doLogout();
+      const le = document.getElementById('l-err');
+      le.textContent = 'Your session ended. Please sign in again.';
+      le.style.display = 'block';
+    }
     throw new Error('Session expired');
+  }
+
+  if (res.status === 403) {
+    const d = await res.clone().json().catch(() => ({}));
+    if (d.error === 'password_change_required') {
+      showPasswordOverlay();
+      throw new Error('Please set a new password to continue.');
+    }
   }
 
   if (res.status === 402) {
@@ -1246,6 +1316,15 @@ async function doLogin() {
     user  = data.user;
     localStorage.setItem('rr_token', token);
     localStorage.setItem('rr_user', JSON.stringify(user));
+    if (user.mustChangePassword) {
+      // Admin-created / reset account: choose a new password before the app loads.
+      loginPasswordInMemory = pass;
+      document.getElementById('l-pass').value = '';
+      btn.disabled = false;
+      btn.textContent = 'Sign In →';
+      showPasswordOverlay();
+      return;
+    }
     initApp();
   } catch (e) {
     err.textContent = e.message;
@@ -1255,10 +1334,98 @@ async function doLogin() {
   }
 }
 
+// ═══════════════════ PASSWORD CHANGE ═══════════════════
+let loginPasswordInMemory = null;   // only held between sign-in and the forced password screen
+
+function passwordProblem(next, current) {
+  if (!next) return 'Enter a new password.';
+  if (next.length < 12) return 'Use at least 12 characters.';
+  if (new TextEncoder().encode(next).length > 72) return 'Use no more than 72 characters.';
+  if (/^(.)\1+$/.test(next)) return 'Choose a password that is not one repeated character.';
+  if (current && next === current) return 'The new password must be different from the current one.';
+  const email = (user && user.email || '').toLowerCase();
+  const local = email.split('@')[0];
+  if (email && (next.toLowerCase() === email || (local.length >= 4 && next.toLowerCase().includes(local)))) {
+    return 'The password should not contain your email address.';
+  }
+  return null;
+}
+
+async function applyPasswordChange(current, next) {
+  const d = await api('POST', '/api/auth/change-password', { currentPassword: current, newPassword: next });
+  token = d.token;
+  localStorage.setItem('rr_token', token);
+  if (user) { user.mustChangePassword = false; localStorage.setItem('rr_user', JSON.stringify(user)); }
+}
+
+function showPasswordOverlay() {
+  const own = loginPasswordInMemory !== null;
+  document.getElementById('pw-cur-wrap').style.display = own ? 'none' : '';
+  document.getElementById('pw-err').style.display = 'none';
+  document.getElementById('pw-overlay').classList.add('visible');
+  stopIdleTimer();
+  setTimeout(() => document.getElementById(own ? 'pw-new' : 'pw-cur').focus(), 50);
+}
+function closePasswordOverlay() {
+  document.getElementById('pw-overlay').classList.remove('visible');
+  ['pw-cur', 'pw-new', 'pw-new2'].forEach(id => { document.getElementById(id).value = ''; });
+  loginPasswordInMemory = null;
+}
+
+async function submitForcedPassword(e) {
+  e.preventDefault();
+  const err = document.getElementById('pw-err'), btn = document.getElementById('pw-btn');
+  const current = loginPasswordInMemory !== null ? loginPasswordInMemory : document.getElementById('pw-cur').value;
+  const next = document.getElementById('pw-new').value, again = document.getElementById('pw-new2').value;
+  const fail = m => { err.textContent = m; err.style.display = 'block'; };
+  err.style.display = 'none';
+  if (!current) return fail('Enter your temporary password.');
+  const problem = passwordProblem(next, current);
+  if (problem) return fail(problem);
+  if (next !== again) return fail('The two new passwords do not match.');
+  btn.disabled = true; btn.textContent = 'Saving…';
+  try {
+    await applyPasswordChange(current, next);
+    closePasswordOverlay();
+    if (document.getElementById('app').classList.contains('visible')) location.reload();
+    else initApp();
+  } catch (ex) {
+    fail(ex.message);
+  } finally {
+    btn.disabled = false; btn.textContent = 'Set password and continue';
+  }
+  return false;
+}
+
+async function submitPasswordChange(e) {
+  e.preventDefault();
+  const err = document.getElementById('pc-err'), btn = document.getElementById('pc-btn');
+  const cur = document.getElementById('pc-cur').value, next = document.getElementById('pc-new').value, again = document.getElementById('pc-new2').value;
+  const fail = m => { err.textContent = m; err.style.display = 'block'; };
+  err.style.display = 'none';
+  if (!cur) return fail('Enter your current password.');
+  const problem = passwordProblem(next, cur);
+  if (problem) return fail(problem);
+  if (next !== again) return fail('The two new passwords do not match.');
+  btn.disabled = true;
+  try {
+    await applyPasswordChange(cur, next);
+    ['pc-cur', 'pc-new', 'pc-new2'].forEach(id => { document.getElementById(id).value = ''; });
+    toast('ok', '✓', 'Password changed. Other devices have been signed out.');
+  } catch (ex) {
+    fail(ex.message);
+  } finally {
+    btn.disabled = false;
+  }
+  return false;
+}
+
 function doLogout() {
   localStorage.removeItem('rr_token');
   localStorage.removeItem('rr_user');
   token = null; user = null;
+  loginPasswordInMemory = null;
+  document.getElementById('pw-overlay').classList.remove('visible');
   stopIdleTimer();
   document.getElementById('session-warning').style.display = 'none';
   document.getElementById('app').classList.remove('visible');
@@ -1320,7 +1487,8 @@ function hideSessionWarning() {
 // ═══════════════════ INIT ═══════════════════
 window.addEventListener('DOMContentLoaded', () => {
   if (token && user) {
-    initApp();
+    if (user.mustChangePassword) showPasswordOverlay();
+    else initApp();
   }
   const d = new Date();
   const days = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
