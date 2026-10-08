@@ -123,6 +123,10 @@ body{font-family:var(--sans);background:var(--ink);color:var(--text);font-size:1
 .login-btn:hover{transform:translateY(-1px);box-shadow:0 6px 20px rgba(154,107,31,.3);}
 .login-btn:disabled{opacity:.5;cursor:not-allowed;transform:none;}
 .login-error{color:var(--rose);font-size:11px;text-align:center;margin-top:8px;}
+.login-ok{color:#1F7A4D;background:rgba(31,122,77,.09);border-radius:8px;font-size:12px;line-height:1.55;text-align:center;margin-top:12px;padding:10px 12px;}
+.login-alt{text-align:center;margin-top:16px;font-size:12px;}
+.login-alt a{color:var(--text3);text-decoration:underline;}
+.login-alt a:hover{color:var(--text);}
 .login-demo{text-align:center;margin-top:16px;font-size:11px;color:var(--text3);}
 
 /* ── APP SHELL ── */
@@ -665,7 +669,7 @@ select.fi:focus{border-color:rgba(200,146,42,.4);}
 
 <!-- LOGIN -->
 <div class="login-screen" id="login-screen">
-  <div class="login-box">
+  <div class="login-box" id="login-box">
     <div class="login-logo">
       <div class="login-logo-gem"><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="20" height="20"><circle cx="6" cy="12" r="2.8" fill="white"/><path d="M11.5 7.5C15 9.8 15 14.2 11.5 16.5" stroke="white" stroke-width="2.2" stroke-linecap="round"/><path d="M15.5 4C22 7.5 22 16.5 15.5 20" stroke="white" stroke-width="2.2" stroke-linecap="round" opacity="0.55"/></svg></div>
       PracticePing
@@ -681,6 +685,45 @@ select.fi:focus{border-color:rgba(200,146,42,.4);}
     </div>
     <button class="login-btn" id="l-btn" onclick="doLogin()">Sign In →</button>
     <div class="login-error" id="l-err" style="display:none;"></div>
+    <div class="login-ok" id="l-ok" style="display:none;"></div>
+    <div class="login-alt"><a href="#" onclick="showLoginPanel('forgot');return false;">Forgot password?</a></div>
+  </div>
+
+  <!-- FORGOT PASSWORD -->
+  <div class="login-box" id="forgot-box" style="display:none;">
+    <div class="login-logo">PracticePing</div>
+    <div class="login-sub" id="fp-sub">Reset your password</div>
+    <form id="fp-form" onsubmit="return submitForgot(event)">
+      <div class="login-field">
+        <label class="login-label" for="fp-email">Email</label>
+        <input type="email" class="login-input" id="fp-email" placeholder="you@practice.com" autocomplete="username" required>
+      </div>
+      <button class="login-btn" id="fp-btn" type="submit">Email me a reset link</button>
+      <div class="login-error" id="fp-err" style="display:none;"></div>
+    </form>
+    <div class="login-ok" id="fp-done" style="display:none;"></div>
+    <div class="login-alt"><a href="#" onclick="showLoginPanel('login');return false;">← Back to sign in</a></div>
+  </div>
+
+  <!-- CHOOSE A NEW PASSWORD (opened from the emailed link) -->
+  <div class="login-box" id="reset-box" style="display:none;">
+    <div class="login-logo">PracticePing</div>
+    <div class="login-sub">Choose a new password</div>
+    <form id="rs-form" onsubmit="return submitReset(event)">
+      <div class="login-field">
+        <label class="login-label" for="rs-new">New password</label>
+        <input type="password" class="login-input" id="rs-new" autocomplete="new-password" required>
+        <div class="pw-hint">At least 12 characters. A short phrase of a few words works well. Don't include your email address.</div>
+      </div>
+      <div class="login-field">
+        <label class="login-label" for="rs-new2">Confirm new password</label>
+        <input type="password" class="login-input" id="rs-new2" autocomplete="new-password" required>
+      </div>
+      <button class="login-btn" id="rs-btn" type="submit">Set new password</button>
+      <div class="login-error" id="rs-err" style="display:none;"></div>
+    </form>
+    <div class="login-alt" id="rs-alt" style="display:none;"><a href="#" onclick="showLoginPanel('forgot');return false;">Send me a new link</a></div>
+    <div class="login-alt"><a href="#" onclick="showLoginPanel('login');return false;">← Back to sign in</a></div>
   </div>
 </div>
 
@@ -1420,6 +1463,76 @@ async function submitPasswordChange(e) {
   return false;
 }
 
+// ═══════════════════ FORGOT / RESET PASSWORD ═══════════════════
+let resetToken = null;   // from the emailed link; kept in memory only
+
+function showLoginPanel(name) {
+  document.getElementById('login-screen').style.display = 'flex';
+  const boxes = { login: 'login-box', forgot: 'forgot-box', reset: 'reset-box' };
+  Object.entries(boxes).forEach(([k, id]) => { document.getElementById(id).style.display = k === name ? '' : 'none'; });
+  ['l-err', 'fp-err', 'rs-err', 'fp-done'].forEach(id => { document.getElementById(id).style.display = 'none'; });
+  if (name === 'forgot') {
+    document.getElementById('fp-form').style.display = '';
+    document.getElementById('fp-email').value = document.getElementById('l-email').value;
+    setTimeout(() => document.getElementById('fp-email').focus(), 30);
+  }
+  if (name === 'reset') {
+    document.getElementById('rs-alt').style.display = 'none';
+    setTimeout(() => document.getElementById('rs-new').focus(), 30);
+  }
+  if (name === 'login') document.getElementById('l-ok').style.display = 'none';
+}
+
+async function submitForgot(e) {
+  e.preventDefault();
+  const email = document.getElementById('fp-email').value.trim();
+  const err = document.getElementById('fp-err'), btn = document.getElementById('fp-btn');
+  err.style.display = 'none';
+  if (!email) return false;
+  btn.disabled = true; btn.textContent = 'Sending…';
+  try {
+    const d = await api('POST', '/api/auth/forgot-password', { email });
+    document.getElementById('fp-form').style.display = 'none';
+    const done = document.getElementById('fp-done');
+    done.textContent = d.message || 'If an account exists for that email, a reset link is on its way.';
+    done.style.display = 'block';
+  } catch (ex) {
+    err.textContent = ex.message; err.style.display = 'block';
+  } finally {
+    btn.disabled = false; btn.textContent = 'Email me a reset link';
+  }
+  return false;
+}
+
+async function submitReset(e) {
+  e.preventDefault();
+  const err = document.getElementById('rs-err'), btn = document.getElementById('rs-btn');
+  const next = document.getElementById('rs-new').value, again = document.getElementById('rs-new2').value;
+  const fail = m => { err.textContent = m; err.style.display = 'block'; };
+  err.style.display = 'none';
+  if (!resetToken) { fail('This reset link is invalid or has expired. Request a new one.'); document.getElementById('rs-alt').style.display = ''; return false; }
+  const problem = passwordProblem(next, null);
+  if (problem) { fail(problem); return false; }
+  if (next !== again) { fail('The two new passwords do not match.'); return false; }
+  btn.disabled = true; btn.textContent = 'Saving…';
+  try {
+    await api('POST', '/api/auth/reset-password', { token: resetToken, newPassword: next });
+    resetToken = null;
+    ['rs-new', 'rs-new2'].forEach(id => { document.getElementById(id).value = ''; });
+    doLogout();                              // clear any stale session on this browser
+    showLoginPanel('login');
+    const ok = document.getElementById('l-ok');
+    ok.textContent = 'Password updated. Sign in with your new password.';
+    ok.style.display = 'block';
+  } catch (ex) {
+    fail(ex.message);
+    if (/invalid or has expired/.test(ex.message)) document.getElementById('rs-alt').style.display = '';
+  } finally {
+    btn.disabled = false; btn.textContent = 'Set new password';
+  }
+  return false;
+}
+
 function doLogout() {
   localStorage.removeItem('rr_token');
   localStorage.removeItem('rr_user');
@@ -1486,7 +1599,13 @@ function hideSessionWarning() {
 
 // ═══════════════════ INIT ═══════════════════
 window.addEventListener('DOMContentLoaded', () => {
-  if (token && user) {
+  const resetLink = /^#reset=([A-Za-z0-9_-]{20,100})$/.exec(location.hash);
+  if (resetLink) {
+    // Opened from the emailed link: take the token out of the address bar right away.
+    resetToken = resetLink[1];
+    history.replaceState(null, '', location.pathname + location.search);
+    showLoginPanel('reset');
+  } else if (token && user) {
     if (user.mustChangePassword) showPasswordOverlay();
     else initApp();
   }
