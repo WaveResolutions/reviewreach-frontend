@@ -381,6 +381,15 @@ input.subj:focus{border-color:rgba(200,146,42,.4);}
 .st-card{background:var(--ink2);border:1px solid var(--border);border-radius:10px;margin-bottom:14px;overflow:hidden;box-shadow:0 1px 3px rgba(20,32,70,.08);}
 .st-head{padding:14px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;background:var(--ink3);}
 .st-htitle{font-size:12px;font-weight:600;color:var(--text);}
+.st-card.acc>.st-head{cursor:pointer;user-select:none;}
+.st-card.acc>.st-head:hover{background:#E4EAF6;}
+.st-card.acc>.st-head:focus-visible{outline:2px solid var(--gold);outline-offset:-2px;}
+.st-card.acc:not(.open)>.st-body{display:none;}
+.st-card.acc:not(.open)>.st-head{border-bottom-color:transparent;}
+.st-right{display:flex;align-items:center;gap:14px;min-width:0;}
+.st-sum{font-size:12px;color:var(--text3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:260px;}
+.st-chev{font-size:11px;color:var(--text3);transition:transform .15s;}
+.st-card.open .st-chev{transform:rotate(180deg);}
 .st-conn{display:flex;align-items:center;gap:6px;font-family:var(--mono);font-size:11px;color:var(--teal);}
 .st-conn-dot{width:6px;height:6px;border-radius:50%;background:var(--teal2);}
 .st-conn.off{color:var(--text3);}
@@ -1766,11 +1775,14 @@ async function loadSettings() {
       { key: 'module_noshow',     label: '📅 No-Show Recovery',             val: s.module_noshow },
       { key: 'module_chart_notes',label: '📋 Chart Note Logging',           val: s.module_chart_notes },
     ];
+    setSum('gbp', s.google_review_link ? 'Review link set' : 'Not set');
+    setSum('brand', s.display_name ? s.display_name : 'Uses practice name');
     document.getElementById('modules-list').innerHTML = mods.map(m => `
       <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;background:var(--ink3);border-radius:7px;border:1px solid var(--border);margin-bottom:8px;">
         <div style="font-size:12px;font-weight:500;color:var(--text);">${m.label}</div>
-        <div class="tog${m.val ? ' on' : ''}" onclick="this.classList.toggle('on')"><div class="tog-k"></div></div>
+        <div class="tog${m.val ? ' on' : ''}" onclick="this.classList.toggle('on');updateModulesSummary()"><div class="tog-k"></div></div>
       </div>`).join('');
+    updateModulesSummary();
   } catch (e) {
     console.warn('Settings load failed:', e.message);
   }
@@ -1924,7 +1936,7 @@ function switchViewMore(name, label) {
   if (name === 'lapsed')    loadLapsed();
   if (name === 'noshow')    loadNoShow();
   if (name === 'analytics') loadAnalytics();
-  if (name === 'settings')  { checkAthenaStatus(); loadSettings(); loadPhysicians(); loadImportHistory(); loadSmsRegistration(); }
+  if (name === 'settings')  { initSettingsAccordion(); checkAthenaStatus(); loadSettings(); loadPhysicians(); loadImportHistory(); loadSmsRegistration(); }
 }
 
 // Close more menu when tapping outside
@@ -2586,6 +2598,7 @@ async function loadSmsRegistration() {
     srApplyType();
     srShowErrors();
     srRenderStatus(r.status || 'none', r);
+    settingsAutoOpen(r.status || 'none');
   } catch (e) {
     document.getElementById('sr-pill-label').textContent = 'Unavailable';
     console.warn('SMS registration load failed:', e.message);
@@ -2671,6 +2684,7 @@ async function loadPhysicians() {
 }
 
 function renderPhysicians() {
+  setSum('phys', physicians.length ? `${physicians.length} physician${physicians.length === 1 ? '' : 's'}` : 'None added');
   const el = document.getElementById('physician-list');
   if (!physicians.length) {
     el.innerHTML = '<div style="font-size:12px;color:var(--text3);">No physicians added yet.</div>';
@@ -3021,6 +3035,67 @@ function switchView(el, name) {
   if (name === 'analytics') loadAnalytics();
   if (name === 'requests')  loadRequests();
   if (name === 'settings')  { checkAthenaStatus(); loadSettings(); loadPhysicians(); loadImportHistory(); loadSmsRegistration(); }
+}
+
+// ═══════════════════ SETTINGS ACCORDION ═══════════════════
+// Each settings card is a collapsible row with a one-line status; one card is open at a time.
+const ACC_ORDER = ['sr', 'gbp', 'phys', 'import', 'brand', 'athena', 'mods', 'pw'];
+const ACC_TITLES = { sr: 'Patient Texting', gbp: 'Google Business', phys: 'Physician', import: 'Patient Data Import',
+                     brand: 'Patient Form Branding', athena: 'athenahealth API', mods: 'Modules', pw: 'Account Security' };
+let accReady = false, accAutoDone = false;
+const accCard = key => document.querySelector(`#view-settings .st-card[data-acc="${key}"]`);
+function setSum(key, text) {
+  const el = document.querySelector(`#view-settings [data-sum="${key}"]`);
+  if (el) el.textContent = text || '';
+}
+function toggleAcc(card, open) {
+  const willOpen = open === undefined ? !card.classList.contains('open') : open;
+  if (willOpen) document.querySelectorAll('#view-settings .st-card.open').forEach(c => {
+    if (c !== card) { c.classList.remove('open'); c.querySelector('.st-head').setAttribute('aria-expanded', 'false'); }
+  });
+  card.classList.toggle('open', willOpen);
+  card.querySelector('.st-head').setAttribute('aria-expanded', String(willOpen));
+}
+function initSettingsAccordion() {
+  if (accReady) return;
+  const cards = [...document.querySelectorAll('#view-settings .st-scroll > .st-card')];
+  const parent = cards[0] && cards[0].parentNode;
+  if (!parent) return;
+  const byKey = {};
+  for (const c of cards) {
+    const t = (c.querySelector('.st-htitle') || {}).textContent || '';
+    const key = ACC_ORDER.find(k => t.includes(ACC_TITLES[k]));
+    if (key) byKey[key] = c;
+  }
+  for (const key of ACC_ORDER) {
+    const c = byKey[key]; if (!c) continue;
+    c.dataset.acc = key; c.classList.add('acc');
+    const head = c.querySelector('.st-head');
+    head.setAttribute('role', 'button'); head.setAttribute('tabindex', '0'); head.setAttribute('aria-expanded', 'false');
+    const right = document.createElement('div'); right.className = 'st-right';
+    const pill = head.querySelector('.st-conn');
+    if (pill) right.appendChild(pill);
+    else { const sum = document.createElement('span'); sum.className = 'st-sum'; sum.dataset.sum = key; right.appendChild(sum); }
+    const chev = document.createElement('span'); chev.className = 'st-chev'; chev.textContent = '▼'; right.appendChild(chev);
+    head.appendChild(right);
+    head.addEventListener('click', () => toggleAcc(c));
+    head.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleAcc(c); } });
+    parent.appendChild(c);   // re-append in the order above
+  }
+  setSum('pw', 'Change your password');
+  accReady = true;
+}
+// First visit: open texting registration if it still needs the practice's attention.
+function settingsAutoOpen(status) {
+  if (accAutoDone) return;
+  accAutoDone = true;
+  if (['none', 'draft', 'rejected'].includes(status) && !document.querySelector('#view-settings .st-card.open')) {
+    const c = accCard('sr'); if (c) toggleAcc(c, true);
+  }
+}
+function updateModulesSummary() {
+  const togs = document.querySelectorAll('#modules-list .tog');
+  setSum('mods', `${[...togs].filter(t => t.classList.contains('on')).length} of ${togs.length} on`);
 }
 
 // ═══════════════════ TOAST ═══════════════════
