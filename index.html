@@ -1737,6 +1737,11 @@ async function loadSchedule() {
       toast('ok', '⚡', `${schedule.length} patients loaded from ${src}.`);
     }
   } catch (e) {
+    // Whatever was loaded before is no longer what the list shows; don't keep a stale selection.
+    schedule = []; pFiltered = []; selectedPatients = new Set();
+    const errBar = document.getElementById('sb-bulk');
+    if (errBar) errBar.style.display = 'none';
+    updateBulkBar();
     if (currentDataSource === 'imported') {
       // In CSV mode, a schedule error just means no data imported yet — show the prompt
       document.getElementById('plist').innerHTML =
@@ -1831,6 +1836,10 @@ function renderPList(list) {
   if (!total) {
     el.innerHTML = `<div style="padding:20px;text-align:center;color:var(--text3);font-size:11px;">No patients found.</div>`;
     document.getElementById('sb-page').style.display = 'none';
+    // An empty list has nothing selectable: clear the bulk bar so it can't show a stale "4 selected".
+    const emptyBar = document.getElementById('sb-bulk');
+    if (emptyBar) emptyBar.style.display = 'none';
+    updateBulkBar();
     return;
   }
 
