@@ -1753,6 +1753,7 @@ async function checkAthenaStatus() {
 }
 
 async function loadSettings() {
+  initSettingsAccordion();
   try {
     const data = await api('GET', '/api/settings');
     const s = data.settings;
@@ -3034,7 +3035,7 @@ function switchView(el, name) {
   if (name === 'noshow')    loadNoShow();
   if (name === 'analytics') loadAnalytics();
   if (name === 'requests')  loadRequests();
-  if (name === 'settings')  { checkAthenaStatus(); loadSettings(); loadPhysicians(); loadImportHistory(); loadSmsRegistration(); }
+  if (name === 'settings')  { initSettingsAccordion(); checkAthenaStatus(); loadSettings(); loadPhysicians(); loadImportHistory(); loadSmsRegistration(); }
 }
 
 // ═══════════════════ SETTINGS ACCORDION ═══════════════════
