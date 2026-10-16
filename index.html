@@ -1728,7 +1728,9 @@ async function checkAthenaStatus() {
     const data = await api('GET', '/api/athena/status');
     const pill = document.getElementById('api-status-pill');
     const txt  = document.getElementById('api-status-text');
-    // Only practices that actually use the athenahealth API see this badge.
+    // Only practices that actually use the athenahealth API see this badge (and its settings card).
+    const athCard = document.getElementById('ath-conn') && document.getElementById('ath-conn').closest('.st-card');
+    if (athCard) athCard.style.display = data.configured === false ? 'none' : '';
     if (data.connected) {
       pill.className = 'api-pill';
       txt.textContent = `athenahealth ${data.environment === 'sandbox' ? 'Sandbox' : 'Live'}`;
