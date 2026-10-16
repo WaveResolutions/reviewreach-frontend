@@ -1770,17 +1770,17 @@ async function loadSettings() {
     }
 
     const mods = [
-      { key: 'module_reviews',    label: '★ Review Outreach',              val: s.module_reviews },
-      { key: 'module_lapsed',     label: '🔄 Lapsed Patient Re-engagement', val: s.module_lapsed },
-      { key: 'module_noshow',     label: '📅 No-Show Recovery',             val: s.module_noshow },
-      { key: 'module_chart_notes',label: '📋 Chart Note Logging',           val: s.module_chart_notes },
+      { key: 'moduleReviews',    label: '★ Review Outreach',              val: s.module_reviews },
+      { key: 'moduleLapsed',     label: '🔄 Lapsed Patient Re-engagement', val: s.module_lapsed },
+      { key: 'moduleNoshow',     label: '📅 No-Show Recovery',             val: s.module_noshow },
+      { key: 'moduleChartNotes', label: '📋 Chart Note Logging',           val: s.module_chart_notes },
     ];
     setSum('gbp', s.google_review_link ? 'Review link set' : 'Not set');
     setSum('brand', s.display_name ? s.display_name : 'Uses practice name');
     document.getElementById('modules-list').innerHTML = mods.map(m => `
       <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;background:var(--ink3);border-radius:7px;border:1px solid var(--border);margin-bottom:8px;">
         <div style="font-size:12px;font-weight:500;color:var(--text);">${m.label}</div>
-        <div class="tog${m.val ? ' on' : ''}" onclick="this.classList.toggle('on');updateModulesSummary()"><div class="tog-k"></div></div>
+        <div class="tog${m.val ? ' on' : ''}" ${user?.role === 'admin' ? `onclick="toggleModule(this,'${m.key}')"` : 'style="opacity:.55;cursor:not-allowed" title="Only practice admins can change modules"'}><div class="tog-k"></div></div>
       </div>`).join('');
     updateModulesSummary();
   } catch (e) {
@@ -3092,6 +3092,19 @@ function settingsAutoOpen(status) {
   if (['none', 'draft', 'rejected'].includes(status) && !document.querySelector('#view-settings .st-card.open')) {
     const c = accCard('sr'); if (c) toggleAcc(c, true);
   }
+}
+async function toggleModule(el, key) {
+  if (el.dataset.busy) return;
+  const want = !el.classList.contains('on');
+  el.dataset.busy = '1';
+  el.classList.toggle('on', want); updateModulesSummary();          // optimistic
+  try {
+    await api('PUT', '/api/settings', { [key]: want });
+    toast('ok', '✓', want ? 'Module turned on.' : 'Module turned off.');
+  } catch (e) {
+    el.classList.toggle('on', !want); updateModulesSummary();        // put it back
+    toast('err', '✕', `Could not save: ${e.message}`);
+  } finally { delete el.dataset.busy; }
 }
 function updateModulesSummary() {
   const togs = document.querySelectorAll('#modules-list .tog');
