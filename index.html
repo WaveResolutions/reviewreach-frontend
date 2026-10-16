@@ -138,6 +138,8 @@ body{font-family:var(--sans);background:var(--ink);color:var(--text);font-size:1
   height:56px;background:var(--ink2);border-bottom:1px solid var(--border);
   display:flex;align-items:center;padding:0 20px;flex-shrink:0;z-index:10;
 }
+/* Desktop: keep the top bar (and its profile menu) above the composer drawer (z-index 20) that slides in below it. */
+@media (min-width: 769px) { .topbar { position: relative; z-index: 400; } }
 .logo{
   font-family:var(--serif);font-size:19px;font-weight:700;color:var(--text);
   display:flex;align-items:center;gap:8px;margin-right:28px;
