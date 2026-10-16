@@ -1197,14 +1197,24 @@ select.fi:focus{border-color:rgba(200,146,42,.4);}
                 </div>
               </div>
 
-              <!-- Inbound email address — hidden until inbound email import is built (no MX for imports.practiceping.com yet) -->
-              <div hidden style="border:1px solid var(--border);border-radius:8px;padding:14px;">
-                <div style="font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;">Automated Email Address</div>
-                <div style="font-size:11px;color:var(--text3);margin-bottom:10px;">In athenahealth → Reports → Schedule Report → Delivery: Email → paste this address. Reports arrive automatically and import without any staff action.</div>
-                <div style="display:flex;gap:8px;align-items:center;">
-                  <input class="fi" id="import-email-addr" readonly style="flex:1;font-family:monospace;font-size:11px;opacity:.8;" value="Loading…">
-                  <button class="btn-sm" onclick="copyImportEmail()">⧉ Copy</button>
+              <!-- Automated email import: this practice's own secret address (shown only when the mail pipeline is on) -->
+              <div id="email-import-card" style="display:none;border:1px solid var(--border);border-radius:8px;padding:14px;margin-top:12px;">
+                <div style="font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;">Automated email import</div>
+                <div style="font-size:12px;color:var(--text2);line-height:1.6;margin-bottom:10px;">
+                  In your EHR, schedule a daily CSV report with email delivery to the address below. Each report is imported automatically, with no staff action. The report must arrive as a <strong>CSV attachment</strong>.
                 </div>
+                <div style="display:flex;gap:8px;align-items:center;">
+                  <input class="fi" id="import-email-addr" readonly aria-label="Your private import address" style="flex:1;font-family:monospace;font-size:12px;" value="Loading…">
+                  <button class="btn-sm" type="button" onclick="copyImportEmail()">⧉ Copy</button>
+                </div>
+                <div style="font-size:11px;color:var(--text3);line-height:1.6;margin-top:10px;">
+                  🔒 This address is private to your practice. Treat it like a password: anyone who has it can add schedule data. Only share it with your EHR's report scheduler.
+                </div>
+                <div style="display:flex;align-items:center;gap:10px;margin-top:10px;flex-wrap:wrap;">
+                  <button class="btn-sm" type="button" id="email-regen-btn" onclick="regenerateImportEmail()" style="background:#fff;color:var(--text2);border:1px solid var(--border2);box-shadow:none;">Generate a new address</button>
+                  <span style="font-size:11px;color:var(--text3);">The old address stops working right away.</span>
+                </div>
+                <div id="email-import-events" style="margin-top:14px;"></div>
               </div>
             </div>
           </div>
@@ -2808,6 +2818,52 @@ async function uploadCSV() {
   }
 }
 
+// The private, per-practice import address and the last few reports that arrived on it.
+function renderEmailImport(data) {
+  const card = document.getElementById('email-import-card');
+  if (!data.inboundEnabled || !data.importEmail) { card.style.display = 'none'; return; }
+  card.style.display = '';
+  document.getElementById('import-email-addr').value = data.importEmail;
+  document.getElementById('email-regen-btn').style.display = user?.role === 'admin' ? '' : 'none';
+  const ev = data.inboundEvents || [];
+  const box = document.getElementById('email-import-events');
+  const row = e => {
+    const ok = e.status === 'imported';
+    const when = new Date(e.created_at).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+    const txt = document.createElement('div');
+    txt.style.cssText = 'display:flex;gap:8px;font-size:11px;line-height:1.7;color:var(--text2);';
+    const dot = document.createElement('span'); dot.textContent = ok ? '✓' : '✕'; dot.style.color = ok ? 'var(--teal)' : 'var(--rose)'; dot.style.fontWeight = '700';
+    const body = document.createElement('span'); body.textContent = `${when} · ${ok ? 'Imported' : 'Not imported'}: ${e.detail || ''}`;
+    txt.append(dot, body); return txt;
+  };
+  box.replaceChildren();
+  const head = document.createElement('div');
+  head.style.cssText = 'font-size:10px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--text3);margin-bottom:6px;';
+  head.textContent = 'Recent reports';
+  box.appendChild(head);
+  if (!ev.length) {
+    const none = document.createElement('div'); none.style.cssText = 'font-size:11px;color:var(--text3);';
+    none.textContent = 'No reports received yet.'; box.appendChild(none);
+  } else ev.forEach(e => box.appendChild(row(e)));
+}
+
+let regenArmed = null;
+async function regenerateImportEmail() {
+  const btn = document.getElementById('email-regen-btn');
+  if (!regenArmed) {                       // first click only arms it
+    btn.textContent = 'Click again to confirm';
+    regenArmed = setTimeout(() => { regenArmed = null; btn.textContent = 'Generate a new address'; }, 6000);
+    return;
+  }
+  clearTimeout(regenArmed); regenArmed = null; btn.disabled = true;
+  try {
+    const data = await api('POST', '/api/import/email-address/regenerate');
+    document.getElementById('import-email-addr').value = data.importEmail;
+    toast('ok', '✓', 'New address created. Update the report schedule in your EHR; the old address no longer works.');
+  } catch (e) { toast('err', '✕', e.message); }
+  finally { btn.disabled = false; btn.textContent = 'Generate a new address'; }
+}
+
 function copyImportEmail() {
   const addr = document.getElementById('import-email-addr').value;
   if (!addr || addr === 'Loading…') return;
@@ -2910,7 +2966,7 @@ async function loadImportHistory() {
   try {
     const data = await api('GET', '/api/import/history');
 
-    document.getElementById('import-email-addr').value = data.importEmail || '';
+    renderEmailImport(data);
     currentDataSource = data.dataSource || 'athena';
     ehrState = { athenaConfigured: !!data.athenaConfigured, integration: data.integration || null };
     const vsel = document.getElementById('ehr-vendor');
