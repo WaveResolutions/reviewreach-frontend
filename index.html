@@ -1164,16 +1164,37 @@ select.fi:focus{border-color:rgba(200,146,42,.4);}
             </div>
             <div class="st-body">
               <div style="font-size:12px;color:var(--text2);margin-bottom:16px;line-height:1.7;">
-                No API required. Front desk uploads today's schedule as a CSV from the Outreach tab. Duplicates are never created.
+                Choose how PracticePing gets your daily schedule. CSV upload works with any system, and duplicates are never created.
               </div>
 
-              <!-- Data source toggle -->
-              <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;background:var(--ink3);border-radius:8px;border:1px solid var(--border);margin-bottom:12px;">
-                <div>
-                  <div style="font-size:12px;font-weight:500;color:var(--text);">CSV Import Mode</div>
-                  <div style="font-size:10px;color:var(--text3);margin-top:2px;">Show import button on Outreach tab instead of pulling from athenahealth API</div>
+              <!-- How does this practice get its patient data? -->
+              <div class="sr-types" id="ds-opts" role="radiogroup" aria-label="How do you get patient data?">
+                <label class="sr-type"><input type="radio" name="dsmode" value="csv" onchange="selectDataMode('csv')"><span><strong>CSV upload</strong><em>Front desk uploads today's schedule from the Outreach tab. Works with any system.</em></span></label>
+                <label class="sr-type"><input type="radio" name="dsmode" value="ehr" onchange="selectDataMode('ehr')"><span><strong>Connect my EHR</strong><em>We pull your schedule automatically. We set up the connection with you; you never enter passwords or keys here.</em></span></label>
+              </div>
+              <div class="sr-status" id="ehr-status" style="display:none;"></div>
+
+              <!-- EHR connection request / athenahealth switch -->
+              <div id="ehr-panel" style="display:none;flex-direction:column;gap:12px;border:1px solid var(--border);border-radius:8px;padding:14px;">
+                <div><div class="fi-lbl">Your EHR / practice management system</div>
+                  <select class="fi" id="ehr-vendor" onchange="renderEhrPanel()">
+                    <option value="">Choose…</option><option>athenahealth</option><option>Epic</option><option>eClinicalWorks</option><option>NextGen</option><option>ModMed</option><option>Other</option>
+                  </select></div>
+                <div id="ehr-athena-ready" style="display:none;font-size:12px;color:var(--text2);line-height:1.6;">
+                  athenahealth is connected for your practice. Switch on the API to pull your schedule automatically.
+                  <div style="margin-top:10px;"><button class="btn-sm" type="button" onclick="useAthenaApi()">Use the athenahealth API</button></div>
                 </div>
-                <div class="tog" id="import-mode-tog" onclick="toggleImportMode()"><div class="tog-k"></div></div>
+                <div id="ehr-request-form" style="display:none;flex-direction:column;gap:12px;">
+                  <div id="ehr-other-wrap" style="display:none;"><div class="fi-lbl">Name of your EHR</div><input class="fi" id="ehr-other" maxlength="100" placeholder="e.g. Greenway"></div>
+                  <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                    <div><div class="fi-lbl">Version or instance (optional)</div><input class="fi" id="ehr-version" maxlength="100" placeholder="e.g. Hyperspace 2024"></div>
+                    <div><div class="fi-lbl">IT contact name (optional)</div><input class="fi" id="ehr-it-name" maxlength="255" placeholder="Who sets up integrations?"></div>
+                  </div>
+                  <div><div class="fi-lbl">IT contact email (optional)</div><input class="fi" id="ehr-it-email" maxlength="255" placeholder="it@yourpractice.com"></div>
+                  <div><div class="fi-lbl">Anything we should know (optional)</div><input class="fi" id="ehr-notes" maxlength="1000" placeholder="e.g. best times to schedule a setup call"></div>
+                  <div style="font-size:11px;color:var(--text3);line-height:1.6;">We'll contact you to set this up. Please don't enter passwords, API keys, or patient information here. Until it's connected, keep using CSV upload.</div>
+                  <div><button class="btn-sm" type="button" id="ehr-send-btn" onclick="submitEhrRequest()">Send connection request</button></div>
+                </div>
               </div>
 
               <!-- Inbound email address — hidden until inbound email import is built (no MX for imports.practiceping.com yet) -->
@@ -2784,39 +2805,96 @@ function copyImportEmail() {
   navigator.clipboard.writeText(addr).then(() => toast('ok', '⧉', 'Import email copied.'));
 }
 
-async function toggleImportMode() {
-  const tog = document.getElementById('import-mode-tog');
-  const isOn = tog.classList.contains('on');
-  const newSource = isOn ? 'athena' : 'imported';
+// ── How the practice gets its patient data: CSV upload, or an EHR connection we set up ──
+let ehrState = { athenaConfigured: false, integration: null };
+let ehrPanelOpen = false;
+
+async function setDataSource(newSource) {
+  await api('PUT', '/api/import/datasource', { dataSource: newSource });
+  currentDataSource = newSource;
+  updateImportModeUI(newSource);
+  loadSchedule();
+}
+
+async function selectDataMode(mode) {
+  if (mode === 'csv') {
+    ehrPanelOpen = false;
+    try {
+      if (currentDataSource !== 'imported') { await setDataSource('imported'); toast('ok', '✓', 'CSV import mode enabled.'); }
+      else updateImportModeUI('imported');
+    } catch (e) { toast('err', '✕', e.message); updateImportModeUI(currentDataSource); }
+    return;
+  }
+  // "Connect my EHR": only reveals the setup panel. The data source changes only once the connection exists.
+  ehrPanelOpen = true;
+  updateImportModeUI(currentDataSource);
+}
+
+function renderEhrPanel() {
+  const panel = document.getElementById('ehr-panel');
+  const show = ehrPanelOpen || currentDataSource === 'athena';
+  panel.style.display = show ? 'flex' : 'none';
+  if (!show) return;
+  const vendor = document.getElementById('ehr-vendor').value;
+  const athenaReady = vendor === 'athenahealth' && ehrState.athenaConfigured;
+  document.getElementById('ehr-athena-ready').style.display = athenaReady && currentDataSource !== 'athena' ? 'block' : 'none';
+  document.getElementById('ehr-request-form').style.display = vendor && !athenaReady ? 'flex' : 'none';
+  document.getElementById('ehr-other-wrap').style.display = vendor === 'Other' ? 'block' : 'none';
+}
+
+async function useAthenaApi() {
   try {
-    await api('PUT', '/api/import/datasource', { dataSource: newSource });
-    tog.classList.toggle('on');
-    currentDataSource = newSource;
-    updateImportModeUI(newSource);
-    toast('ok', '✓', newSource === 'imported' ? 'CSV import mode enabled.' : 'athenahealth API mode enabled.');
-    loadSchedule();
+    await setDataSource('athena');
+    toast('ok', '✓', 'athenahealth API mode enabled.');
+  } catch (e) { toast('err', '✕', e.message); }
+}
+
+async function submitEhrRequest() {
+  const btn = document.getElementById('ehr-send-btn');
+  const val = id => document.getElementById(id).value.trim();
+  btn.disabled = true;
+  try {
+    const data = await api('POST', '/api/import/integration-request', {
+      vendor: val('ehr-vendor'), otherName: val('ehr-other'), version: val('ehr-version'),
+      itName: val('ehr-it-name'), itEmail: val('ehr-it-email'), notes: val('ehr-notes'),
+    });
+    ehrState.integration = data.integration;
+    ehrPanelOpen = false;
+    toast('ok', '✓', "Request sent. We'll contact you to set up the connection.");
+    updateImportModeUI(currentDataSource);
   } catch (e) {
     toast('err', '✕', e.message);
-  }
+  } finally { btn.disabled = false; }
 }
 
 function updateImportModeUI(dataSource) {
   const pill  = document.getElementById('import-mode-pill');
   const label = document.getElementById('import-mode-label');
   const strip = document.getElementById('sb-import-strip');
-  const tog   = document.getElementById('import-mode-tog');
+  const radio = v => document.querySelector(`#ds-opts input[value="${v}"]`);
+  const ehr = ehrState.integration;
+  const ehrName = ehr ? (ehr.vendor === 'Other' ? (ehr.other || 'Other') : ehr.vendor) : '';
 
   if (dataSource === 'imported') {
     pill.className = 'st-conn';
-    label.textContent = 'CSV Import Mode';
+    label.textContent = ehr ? 'CSV · ' + ehrName + ' requested' : 'CSV Import Mode';
     if (strip) strip.style.display = 'flex';
-    if (tog)   tog.classList.add('on');
   } else {
     pill.className = 'st-conn off';
     label.textContent = 'athenahealth API Mode';
     if (strip) strip.style.display = 'none';
-    if (tog)   tog.classList.remove('on');
   }
+  const csvOn = dataSource === 'imported' && !ehrPanelOpen;
+  if (radio('csv')) radio('csv').checked = csvOn;
+  if (radio('ehr')) radio('ehr').checked = !csvOn;
+
+  const st = document.getElementById('ehr-status');
+  if (ehr && dataSource === 'imported') {
+    const when = ehr.requestedAt ? ' on ' + new Date(ehr.requestedAt).toLocaleDateString() : '';
+    st.textContent = `Connection request for ${ehrName} sent${when}. We'll contact you to set it up. Until then, keep using CSV upload.`;
+    st.style.display = '';
+  } else st.style.display = 'none';
+  renderEhrPanel();
 }
 
 async function loadImportHistory() {
@@ -2825,6 +2903,9 @@ async function loadImportHistory() {
 
     document.getElementById('import-email-addr').value = data.importEmail || '';
     currentDataSource = data.dataSource || 'athena';
+    ehrState = { athenaConfigured: !!data.athenaConfigured, integration: data.integration || null };
+    const vsel = document.getElementById('ehr-vendor');
+    if (vsel && !vsel.value) vsel.value = ehrState.athenaConfigured ? 'athenahealth' : (data.integration ? data.integration.vendor : '');
     updateImportModeUI(currentDataSource);
 
     // Update sidebar strip last-sync text
