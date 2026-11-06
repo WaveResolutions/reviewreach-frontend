@@ -238,6 +238,7 @@ body{font-family:var(--sans);background:var(--ink);color:var(--text);font-size:1
 .tag{font-size:9px;font-weight:600;padding:2px 6px;border-radius:3px;font-family:var(--mono);}
 .t-sent{background:rgba(11,139,124,.12);color:var(--teal2);border:1px solid rgba(11,139,124,.2);}
 .t-q{background:rgba(200,146,42,.1);color:var(--gold2);border:1px solid rgba(200,146,42,.2);}
+.t-out{background:rgba(181,48,69,.08);color:var(--rose);border:1px solid rgba(181,48,69,.25);}
 
 .sb-stats{border-top:1px solid var(--border);padding:8px 0;display:flex;flex-shrink:0;}
 .sb-stat{flex:1;text-align:center;padding:4px 0;border-right:1px solid var(--border);}
@@ -1222,6 +1223,21 @@ select.fi:focus{border-color:rgba(200,146,42,.4);}
           </div>
 
           <div class="st-card">
+            <div class="st-head"><div class="st-htitle">🚫 Do-not-contact list</div></div>
+            <div class="st-body">
+              <div style="font-size:12px;color:var(--text2);line-height:1.6;">
+                Patients on this list never receive texts or emails from PracticePing, even if they are on the schedule or a message is already queued. Patients who reply STOP to a text, or use the unsubscribe link in an email, are handled for you. Use this list for anyone who asks your office directly.
+              </div>
+              <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:10px;align-items:end;">
+                <div><div class="fi-lbl">Email address</div><input class="fi" id="oo-email" type="email" placeholder="patient@example.com" autocomplete="off"></div>
+                <div><div class="fi-lbl">Mobile phone</div><input class="fi" id="oo-phone" type="tel" placeholder="(555) 123-4567" autocomplete="off"></div>
+                <button class="btn-sm" type="button" onclick="addSuppression()">Add</button>
+              </div>
+              <div id="oo-list"></div>
+            </div>
+          </div>
+
+          <div class="st-card">
             <div class="st-head"><div class="st-htitle">⚙ Modules</div></div>
             <div class="st-body">
               <div id="modules-list"></div>
@@ -1872,11 +1888,14 @@ function renderPList(list) {
       <div class="pc-ava" style="width:34px;height:34px;font-size:13px;">${p.firstname[0]}${p.lastname[0]}</div>
       <div class="pc-body">
         <div class="pc-name">${p.firstname} ${p.lastname}${isSel ? '<span style="float:right;font-size:9px;color:var(--gold2);font-weight:600;margin-left:8px;">Composing →</span>' : ''}</div>
-        <div class="pc-sub">${time} · ${p.appointmenttype || ''}${p.providername ? ' · ' + p.providername : ''}${isNC ? ' · <em style="opacity:.7;">no contact</em>' : ''}</div>
+        <div class="pc-sub">${time} · ${p.appointmenttype || ''}${p.providername ? ' · ' + p.providername : ''}${isNC ? ` · <em style="opacity:.7;">${p.optedOutSms || p.optedOutEmail ? 'opted out' : 'no contact'}</em>` : ''}</div>
         ${contact && !isNC ? `<div class="pc-contact">${contact}</div>` : ''}
         <div class="pc-tags">
           ${isSent ? '<span class="tag t-sent">✓ SENT</span>' : ''}
           ${isQ    ? '<span class="tag t-q">⏱ QUEUED</span>'  : ''}
+          ${p.optedOutSms && p.optedOutEmail ? '<span class="tag t-out">🚫 OPTED OUT</span>'
+            : p.optedOutSms ? '<span class="tag t-out">🚫 NO TEXTS</span>'
+            : p.optedOutEmail ? '<span class="tag t-out">🚫 NO EMAIL</span>' : ''}
         </div>
       </div>
     </div>`;
@@ -1979,7 +1998,7 @@ function switchViewMore(name, label) {
   if (name === 'lapsed')    loadLapsed();
   if (name === 'noshow')    loadNoShow();
   if (name === 'analytics') loadAnalytics();
-  if (name === 'settings')  { initSettingsAccordion(); checkAthenaStatus(); loadSettings(); loadPhysicians(); loadImportHistory(); loadSmsRegistration(); }
+  if (name === 'settings')  { initSettingsAccordion(); checkAthenaStatus(); loadSettings(); loadPhysicians(); loadImportHistory(); loadSmsRegistration(); loadSuppressions(); }
 }
 
 // Close more menu when tapping outside
@@ -2049,11 +2068,13 @@ async function bulkSendAll() {
   const total = patientIds.length;
   btn.disabled = true;
 
-  let sent = 0, failed = 0;
+  let sent = 0, failed = 0, skipped = 0;
 
   for (const patientId of patientIds) {
     const p = schedule.find(sp => sp.patientid === patientId);
     if (!p) continue;
+    // Opted out of this channel: skip without calling the server (it would refuse anyway).
+    if (channel === 'sms' ? p.optedOutSms : p.optedOutEmail) { skipped++; continue; }
 
     const arr  = channel === 'sms' ? SMS_T : EMAIL_T;
     const body = channel === 'sms' ? arr[templateId](p, pr, link) : arr[templateId].body(p, pr, link);
@@ -2077,10 +2098,11 @@ async function bulkSendAll() {
   renderPList(getCurrentFilter());
   updateStats();
 
+  const skipNote = skipped ? ` · ${skipped} skipped (opted out)` : '';
   if (failed > 0) {
-    toast('warn', '⚠', `Bulk send: ${sent} sent · ${failed} failed.`);
+    toast('warn', '⚠', `Bulk send: ${sent} sent · ${failed} failed${skipNote}.`);
   } else {
-    toast('ok', '✓', `Sent review requests to ${sent} patients.`);
+    toast('ok', '✓', `Sent review requests to ${sent} patients${skipNote}.`);
   }
 }
 
@@ -2134,6 +2156,8 @@ function renderCX() {
       </div>
     </div>
     ${banner}
+    ${p.optedOutSms || p.optedOutEmail ? `<div class="cx-banner b-warn"><span>🚫</span><span><strong>${p.optedOutSms && p.optedOutEmail ? 'This patient has opted out of texts and emails.' : p.optedOutSms ? 'This patient has opted out of texts.' : 'This patient has opted out of emails.'}</strong> Sending on ${p.optedOutSms && p.optedOutEmail ? 'either channel' : p.optedOutSms ? 'SMS' : 'email'} is blocked.</span></div>` : ''}
+    ${(p.mobilephone || p.email) && !(p.optedOutSms && p.optedOutEmail) ? `<div style="margin:4px 0 10px;"><button type="button" class="btn-sm" style="background:#fff;color:var(--rose);border:1px solid var(--border2);box-shadow:none;" onclick="markDoNotContact()">🚫 Mark as do not contact</button></div>` : ''}
     <div class="cx-lbl">Channel</div>
     <div class="ch-toggle">
       <button class="ch-btn${ch==='sms'?' on':''}" onclick="setCh('sms')">📱 SMS</button>
@@ -3183,14 +3207,88 @@ function switchView(el, name) {
   if (name === 'noshow')    loadNoShow();
   if (name === 'analytics') loadAnalytics();
   if (name === 'requests')  loadRequests();
-  if (name === 'settings')  { initSettingsAccordion(); checkAthenaStatus(); loadSettings(); loadPhysicians(); loadImportHistory(); loadSmsRegistration(); }
+  if (name === 'settings')  { initSettingsAccordion(); checkAthenaStatus(); loadSettings(); loadPhysicians(); loadImportHistory(); loadSmsRegistration(); loadSuppressions(); }
+}
+
+// ═══════════════════ DO-NOT-CONTACT LIST ═══════════════════
+async function loadSuppressions() {
+  try {
+    const data = await api('GET', '/api/suppressions');
+    renderSuppressions(data.items || []);
+  } catch (e) { console.warn('Do-not-contact list failed:', e.message); }
+}
+
+function renderSuppressions(items) {
+  setSum('optouts', items.length ? `${items.length} contact${items.length === 1 ? '' : 's'}` : 'Nobody listed');
+  const box = document.getElementById('oo-list');
+  box.replaceChildren();
+  if (!items.length) {
+    const none = document.createElement('div'); none.style.cssText = 'font-size:12px;color:var(--text3);';
+    none.textContent = 'No one is on the list yet.'; box.appendChild(none); return;
+  }
+  const isAdmin = user?.role === 'admin';
+  for (const it of items) {
+    const row = document.createElement('div');
+    row.style.cssText = 'display:flex;align-items:center;gap:10px;padding:8px 0;border-top:1px solid var(--border);font-size:12px;';
+    const kind = document.createElement('span'); kind.className = 'tag t-out'; kind.textContent = it.channel === 'email' ? '✉ EMAIL' : '📱 TEXT';
+    const val = document.createElement('span'); val.style.cssText = 'flex:1;font-family:var(--mono);color:var(--text);word-break:break-all;';
+    val.textContent = it.channel === 'sms' && /^\d{10}$/.test(it.contact_value)
+      ? `(${it.contact_value.slice(0, 3)}) ${it.contact_value.slice(3, 6)}-${it.contact_value.slice(6)}` : it.contact_value;
+    const why = document.createElement('span'); why.style.cssText = 'color:var(--text3);font-size:11px;';
+    why.textContent = `${it.reason || ''} · ${new Date(it.created_at).toLocaleDateString()}`;
+    row.append(kind, val, why);
+    if (isAdmin) {
+      const rm = document.createElement('button'); rm.type = 'button'; rm.className = 'btn-sm';
+      rm.style.cssText = 'background:#fff;color:var(--text2);border:1px solid var(--border2);box-shadow:none;padding:5px 10px;';
+      rm.textContent = 'Remove'; rm.onclick = () => removeSuppression(it.id);
+      row.appendChild(rm);
+    }
+    box.appendChild(row);
+  }
+}
+
+async function addSuppression() {
+  const email = document.getElementById('oo-email').value.trim();
+  const phone = document.getElementById('oo-phone').value.trim();
+  if (!email && !phone) { toast('err', '✕', 'Enter an email address or a phone number.'); return; }
+  try {
+    const r = await api('POST', '/api/suppressions', { email, phone, reason: 'Added by staff' });
+    document.getElementById('oo-email').value = ''; document.getElementById('oo-phone').value = '';
+    toast('ok', '✓', r.added ? 'Added. No texts or emails will go to them.' : 'Already on the list.');
+    loadSuppressions(); loadSchedule();
+  } catch (e) { toast('err', '✕', e.message); }
+}
+
+async function removeSuppression(id) {
+  try {
+    await api('DELETE', `/api/suppressions/${id}`);
+    toast('ok', '✓', 'Removed. They can be contacted again.');
+    loadSuppressions(); loadSchedule();
+  } catch (e) { toast('err', '✕', e.message); }
+}
+
+// From a patient's composer: stop all texts and emails to this patient.
+async function markDoNotContact() {
+  const p = sel; if (!p) return;
+  if (!confirm(`Stop all texts and emails to ${p.firstname} ${p.lastname}? You can undo this in Settings.`)) return;
+  try {
+    await api('POST', '/api/suppressions', { email: p.email || '', phone: p.mobilephone || '', reason: 'Marked by staff from the schedule' });
+    p.optedOutSms = !!p.mobilephone; p.optedOutEmail = !!p.email; p.canContact = false;
+    const row = schedule.find(x => x.patientid === p.patientid);
+    if (row) Object.assign(row, { optedOutSms: p.optedOutSms, optedOutEmail: p.optedOutEmail, canContact: false });
+    selectedPatients.delete(p.patientid);
+    renderPList(getCurrentFilter()); renderCX();
+    toast('ok', '✓', `${p.firstname} will not receive texts or emails.`);
+    loadSuppressions();
+  } catch (e) { toast('err', '✕', e.message); }
 }
 
 // ═══════════════════ SETTINGS ACCORDION ═══════════════════
 // Each settings card is a collapsible row with a one-line status; one card is open at a time.
-const ACC_ORDER = ['sr', 'gbp', 'phys', 'import', 'brand', 'athena', 'mods', 'pw'];
+const ACC_ORDER = ['sr', 'gbp', 'phys', 'import', 'brand', 'athena', 'optouts', 'mods', 'pw'];
 const ACC_TITLES = { sr: 'Patient Texting', gbp: 'Google Business', phys: 'Physician', import: 'Patient Data Import',
-                     brand: 'Patient Form Branding', athena: 'athenahealth API', mods: 'Modules', pw: 'Account Security' };
+                     brand: 'Patient Form Branding', athena: 'athenahealth API', optouts: 'Do-not-contact',
+                     mods: 'Modules', pw: 'Account Security' };
 let accReady = false, accAutoDone = false;
 const accCard = key => document.querySelector(`#view-settings .st-card[data-acc="${key}"]`);
 function setSum(key, text) {
