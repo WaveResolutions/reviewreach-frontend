@@ -697,11 +697,11 @@ select.fi:focus{border-color:rgba(200,146,42,.4);}
     <div class="trial-body" id="trial-overlay-body">
       Your 3-month free trial has ended. To continue using PracticePing and keep your patient outreach running, please activate your subscription.
     </div>
-    <button class="trial-cta" onclick="window.open('mailto:info@waveresolutions.com?subject=PracticePing%20Subscription%20Activation','_blank')">
+    <button class="trial-cta" onclick="window.open('mailto:info@practiceping.com?subject=PracticePing%20Subscription%20Activation','_blank')">
       Activate My Subscription
     </button>
     <div class="trial-contact">
-      Questions? Email <a href="mailto:info@waveresolutions.com">info@waveresolutions.com</a>
+      Questions? Email <a href="mailto:info@practiceping.com">info@practiceping.com</a>
     </div>
   </div>
 </div>
@@ -1518,7 +1518,7 @@ async function api(method, path, body = null) {
       if (banner) {
         banner.textContent = '';
         const msg = document.createElement('span');
-        msg.innerHTML = `<strong>${d} day${d === 1 ? '' : 's'} left in your free trial.</strong> Activate your subscription to avoid any interruption — <a href="mailto:info@waveresolutions.com" style="color:#9fc9ff;">info@waveresolutions.com</a>`;
+        msg.innerHTML = `<strong>${d} day${d === 1 ? '' : 's'} left in your free trial.</strong> Activate your subscription to avoid any interruption — <a href="mailto:info@practiceping.com" style="color:#9fc9ff;">info@practiceping.com</a>`;
         banner.appendChild(msg);
         banner.classList.add('visible');
       }
