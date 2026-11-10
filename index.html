@@ -2247,7 +2247,7 @@ async function doSend() {
 // ═══════════════════ QUEUE ═══════════════════
 async function loadQueue() {
   try {
-    const data = await api('GET', '/api/queue');
+    const data = await api('GET', '/api/queue?status=queued');
     queue = data.items || [];
     renderQT();
     updQBadge();
