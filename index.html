@@ -1167,7 +1167,7 @@ select.fi:focus{border-color:rgba(200,146,42,.4);}
             </div>
             <div class="st-body">
               <div style="font-size:12px;color:var(--text2);margin-bottom:16px;line-height:1.7;">
-                Choose how PracticePing gets your daily schedule. CSV upload works with any system, and duplicates are never created.
+                Choose how PracticePing gets your daily schedule. CSV upload works with any system, and duplicates are never created. To record that a patient agreed to texts, add a "Text Consent" column to the CSV and put Yes for them.
               </div>
 
               <!-- How does this practice get its patient data? -->
@@ -1888,7 +1888,7 @@ function renderPList(list) {
       <div class="pc-ava" style="width:34px;height:34px;font-size:13px;">${p.firstname[0]}${p.lastname[0]}</div>
       <div class="pc-body">
         <div class="pc-name">${p.firstname} ${p.lastname}${isSel ? '<span style="float:right;font-size:9px;color:var(--gold2);font-weight:600;margin-left:8px;">Composing →</span>' : ''}</div>
-        <div class="pc-sub">${time} · ${p.appointmenttype || ''}${p.providername ? ' · ' + p.providername : ''}${isNC ? ` · <em style="opacity:.7;">${p.optedOutSms || p.optedOutEmail ? 'opted out' : 'no contact'}</em>` : ''}</div>
+        <div class="pc-sub">${time} · ${p.appointmenttype || ''}${p.providername ? ' · ' + p.providername : ''}${isNC ? ` · <em style="opacity:.7;">${p.optedOutSms || p.optedOutEmail ? 'opted out' : (p.mobilephone && p.smsConsent === false ? 'no text consent' : 'no contact')}</em>` : ''}</div>
         ${contact && !isNC ? `<div class="pc-contact">${contact}</div>` : ''}
         <div class="pc-tags">
           ${isSent ? '<span class="tag t-sent">✓ SENT</span>' : ''}
@@ -1896,6 +1896,8 @@ function renderPList(list) {
           ${p.optedOutSms && p.optedOutEmail ? '<span class="tag t-out">🚫 OPTED OUT</span>'
             : p.optedOutSms ? '<span class="tag t-out">🚫 NO TEXTS</span>'
             : p.optedOutEmail ? '<span class="tag t-out">🚫 NO EMAIL</span>' : ''}
+          ${!p.optedOutSms && p.mobilephone && p.smsConsent === false ? '<span class="tag t-out">NO TEXT CONSENT</span>' : ''}
+          ${!p.optedOutSms && p.smsConsent !== false && p.smsAtCap ? '<span class="tag t-out">TEXT LIMIT REACHED</span>' : ''}
         </div>
       </div>
     </div>`;
@@ -2073,8 +2075,9 @@ async function bulkSendAll() {
   for (const patientId of patientIds) {
     const p = schedule.find(sp => sp.patientid === patientId);
     if (!p) continue;
-    // Opted out of this channel: skip without calling the server (it would refuse anyway).
-    if (channel === 'sms' ? p.optedOutSms : p.optedOutEmail) { skipped++; continue; }
+    // Not allowed on this channel (opted out; for texts also no consent on file, or at the monthly limit):
+    // skip without calling the server (it would refuse anyway).
+    if (channel === 'sms' ? (p.optedOutSms || p.smsConsent === false || p.smsAtCap) : p.optedOutEmail) { skipped++; continue; }
 
     const arr  = channel === 'sms' ? SMS_T : EMAIL_T;
     const body = channel === 'sms' ? arr[templateId](p, pr, link) : arr[templateId].body(p, pr, link);
@@ -2098,7 +2101,7 @@ async function bulkSendAll() {
   renderPList(getCurrentFilter());
   updateStats();
 
-  const skipNote = skipped ? ` · ${skipped} skipped (opted out)` : '';
+  const skipNote = skipped ? ` · ${skipped} skipped (${channel === 'sms' ? 'no text consent, opted out, or at the limit' : 'opted out'})` : '';
   if (failed > 0) {
     toast('warn', '⚠', `Bulk send: ${sent} sent · ${failed} failed${skipNote}.`);
   } else {
@@ -2157,6 +2160,9 @@ function renderCX() {
     </div>
     ${banner}
     ${p.optedOutSms || p.optedOutEmail ? `<div class="cx-banner b-warn"><span>🚫</span><span><strong>${p.optedOutSms && p.optedOutEmail ? 'This patient has opted out of texts and emails.' : p.optedOutSms ? 'This patient has opted out of texts.' : 'This patient has opted out of emails.'}</strong> Sending on ${p.optedOutSms && p.optedOutEmail ? 'either channel' : p.optedOutSms ? 'SMS' : 'email'} is blocked.</span></div>` : ''}
+    ${p.mobilephone && !p.optedOutSms && p.smsConsent === false ? `<div class="cx-banner b-warn"><span>📱</span><span><strong>No text consent is on file for this patient.</strong> Texts are blocked until you record that they agreed (paper form, in person, or by phone). Email is not affected.</span></div>
+      <div style="margin:4px 0 10px;"><button type="button" class="btn-sm" onclick="recordTextConsent()">✓ Text consent on file</button></div>` : ''}
+    ${p.mobilephone && !p.optedOutSms && p.smsConsent !== false && p.smsAtCap ? `<div class="cx-banner b-warn"><span>📱</span><span><strong>Text limit reached.</strong> This patient has already received the most texts they agreed to in the last 30 days. Try email, or wait.</span></div>` : ''}
     ${(p.mobilephone || p.email) && !(p.optedOutSms && p.optedOutEmail) ? `<div style="margin:4px 0 10px;"><button type="button" class="btn-sm" style="background:#fff;color:var(--rose);border:1px solid var(--border2);box-shadow:none;" onclick="markDoNotContact()">🚫 Mark as do not contact</button></div>` : ''}
     <div class="cx-lbl">Channel</div>
     <div class="ch-toggle">
@@ -2645,6 +2651,7 @@ function srShowErrors(fields = {}) {
 async function loadSmsRegistration() {
   try {
     const data = await api('GET', '/api/sms-registration');
+    if (data.platformManaged) { srShowManaged(); settingsAutoOpen('approved'); return; }
     const form = document.getElementById('sr-form');
     const o = srOptions = data.options;
     srFill(form.businessType, o.businessTypes.filter(t => t !== 'Sole Proprietorship'));
@@ -2670,6 +2677,21 @@ async function loadSmsRegistration() {
     document.getElementById('sr-pill-label').textContent = 'Unavailable';
     console.warn('SMS registration load failed:', e.message);
   }
+}
+
+// Texting runs under PracticePing's own carrier registration, so the practice has nothing to submit.
+function srShowManaged() {
+  const titleEl = document.querySelector('#sr-card .st-htitle');
+  if (titleEl) titleEl.textContent = '📱 Patient Texting';
+  document.getElementById('sr-pill').className = 'st-conn';
+  document.getElementById('sr-pill-label').textContent = 'Texting active';
+  const intro = document.querySelector('#sr-card .sr-intro'); if (intro) intro.style.display = 'none';
+  const form = document.getElementById('sr-form'); if (form) form.style.display = 'none';
+  const box = document.getElementById('sr-status');
+  box.innerHTML = '<strong>Patient texting is active for your practice.</strong> PracticePing has already registered its messaging program with the carriers, so there is nothing for you to submit.' +
+    '<br><br><strong>Who gets texts:</strong> only patients who have agreed to receive them. Record a patient\'s consent by adding a "Text Consent" column (Yes) to your CSV, or by opening the patient and pressing "Text consent on file". Texts are blocked until consent is recorded.' +
+    '<br><br><strong>Limits and opt-outs:</strong> a patient receives at most 5 texts in any 30 days. A patient who replies STOP is blocked automatically, and you can add anyone to the Do-not-contact list.';
+  box.style.display = '';
 }
 
 function srRenderStatus(status, r = {}) {
@@ -3264,6 +3286,20 @@ async function removeSuppression(id) {
     await api('DELETE', `/api/suppressions/${id}`);
     toast('ok', '✓', 'Removed. They can be contacted again.');
     loadSuppressions(); loadSchedule();
+  } catch (e) { toast('err', '✕', e.message); }
+}
+
+// From a patient's composer: record that this patient agreed to receive texts.
+async function recordTextConsent() {
+  const p = sel; if (!p || !p.mobilephone) return;
+  if (!confirm(`Confirm that ${p.firstname} ${p.lastname} agreed to receive text messages from your practice (on a form, in person, or by phone)?`)) return;
+  try {
+    await api('POST', '/api/sms-consent', { phone: p.mobilephone });
+    p.smsConsent = true;
+    const row = schedule.find(x => x.patientid === p.patientid);
+    if (row) row.smsConsent = true;
+    renderPList(getCurrentFilter()); renderCX();
+    toast('ok', '✓', `Text consent recorded for ${p.firstname}.`);
   } catch (e) { toast('err', '✕', e.message); }
 }
 
