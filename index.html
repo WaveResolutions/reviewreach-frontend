@@ -41,12 +41,44 @@ body{font-family:var(--sans);background:var(--ink);color:var(--text);font-size:1
   z-index:10000;
 }
 #trial-expired-overlay.visible{display:flex;}
-#pw-overlay{
+#pw-overlay,#mfa-overlay{
   position:fixed;inset:0;background:rgba(10,14,26,.92);backdrop-filter:blur(6px);
   display:none;align-items:center;justify-content:center;
   z-index:10001;padding:16px;overflow:auto;
 }
-#pw-overlay.visible{display:flex;}
+#pw-overlay.visible,#mfa-overlay.visible{display:flex;}
+#mfa-overlay .pw-card{max-width:460px;}
+.mfa-qr{display:block;margin:6px auto 10px;width:190px;height:190px;border:1px solid var(--border);border-radius:10px;background:#fff;padding:6px;}
+.mfa-secret{font-family:var(--mono);font-size:12px;letter-spacing:.08em;text-align:center;background:var(--ink3);border:1px solid var(--border);border-radius:8px;padding:8px 10px;word-break:break-all;user-select:all;}
+.mfa-steps{font-size:12px;color:var(--text2);line-height:1.6;margin:0 0 12px;padding-left:18px;}
+.rc-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:12px 0;}
+.rc-grid code{font-family:var(--mono);font-size:13px;background:var(--ink3);border:1px solid var(--border);border-radius:6px;padding:7px 8px;text-align:center;user-select:all;}
+.rc-actions{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;}
+.rc-check{display:flex;gap:8px;align-items:flex-start;font-size:12px;color:var(--text2);line-height:1.5;margin-bottom:14px;cursor:pointer;}
+.u-list{display:flex;flex-direction:column;gap:8px;margin-bottom:16px;}
+.u-row{display:flex;flex-wrap:wrap;gap:10px 14px;align-items:center;justify-content:space-between;border:1px solid var(--border);border-radius:9px;padding:10px 12px;background:#fff;}
+.u-who{min-width:180px;flex:1 1 200px;}
+.u-name{font-size:13px;font-weight:600;color:var(--text);}
+.u-mail{font-size:11px;color:var(--text3);word-break:break-all;}
+.u-meta{display:flex;gap:10px;align-items:center;flex-wrap:wrap;font-size:11px;color:var(--text2);}
+.u-chip{font-size:10px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;border-radius:99px;padding:2px 8px;background:rgba(31,122,77,.1);color:#1F7A4D;}
+.u-chip.invited{background:rgba(200,146,42,.14);color:#8a5d0f;}
+.u-chip.deactivated,.u-chip.locked{background:rgba(192,55,74,.1);color:#C0374A;}
+.u-chip.you{background:var(--ink3);color:var(--text2);}
+.u-acts{display:flex;gap:6px;flex-wrap:wrap;}
+.u-act{font-family:var(--sans);font-size:11px;font-weight:600;padding:5px 10px;border-radius:6px;border:1px solid var(--border2);background:#fff;color:var(--text2);cursor:pointer;}
+.u-act:hover{background:var(--ink3);color:var(--text);}
+.u-act.danger{color:#C0374A;}
+.u-add{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;align-items:end;}
+.al-row{display:grid;grid-template-columns:150px 1fr auto;gap:4px 12px;padding:8px 2px;border-bottom:1px solid var(--border);font-size:12px;align-items:baseline;}
+.al-time{font-family:var(--mono);font-size:11px;color:var(--text3);}
+.al-what{color:var(--text);}
+.al-ip{font-family:var(--mono);font-size:10px;color:var(--text3);}
+@media (max-width:640px){.al-row{grid-template-columns:1fr;}}
+body:not(.role-admin) .admin-only{display:none !important;}
+body:not(.role-admin):not(.role-auditor) .audit-only{display:none !important;}
+body.role-auditor .write-only,body.role-auditor #send-btn,body.role-auditor #av-send-btn,body.role-auditor .q-x,body.role-auditor #sb-bulk,body.role-auditor #sb-import-strip,
+body.role-auditor button[onclick^="setReqStatus"],body.role-auditor #view-settings .st-card:not([data-acc="pw"]):not([data-acc="audit"]) .st-body button{display:none !important;}
 .pw-card{
   background:var(--ink2);border:1px solid var(--border);
   border-radius:20px;padding:36px 32px;max-width:420px;width:100%;
@@ -742,6 +774,43 @@ select.fi:focus{border-color:rgba(200,146,42,.4);}
     <div class="login-alt" id="rs-alt" style="display:none;"><a href="#" onclick="showLoginPanel('forgot');return false;">Send me a new link</a></div>
     <div class="login-alt"><a href="#" onclick="showLoginPanel('login');return false;">← Back to sign in</a></div>
   </div>
+
+  <!-- TWO-STEP CODE (after the password) -->
+  <div class="login-box" id="mfa-box" style="display:none;">
+    <div class="login-logo">PracticePing</div>
+    <div class="login-sub" id="mfa-sub">Enter the 6-digit code from your authenticator app</div>
+    <form id="mfa-form" onsubmit="return submitMfa(event)">
+      <div class="login-field">
+        <label class="login-label" for="mfa-code" id="mfa-label">Authentication code</label>
+        <input type="text" class="login-input" id="mfa-code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="123456" required>
+      </div>
+      <button class="login-btn" id="mfa-btn" type="submit">Verify and sign in</button>
+      <div class="login-error" id="mfa-err" style="display:none;"></div>
+    </form>
+    <div class="login-alt"><a href="#" id="mfa-toggle" onclick="toggleRecovery();return false;">Lost your phone? Use a recovery code</a></div>
+    <div class="login-alt"><a href="#" onclick="showLoginPanel('login');return false;">← Back to sign in</a></div>
+  </div>
+
+  <!-- ACCEPT AN INVITATION (opened from the emailed link) -->
+  <div class="login-box" id="invite-box" style="display:none;">
+    <div class="login-logo">PracticePing</div>
+    <div class="login-sub" id="iv-sub">Join your practice</div>
+    <form id="iv-form" onsubmit="return submitInvite(event)">
+      <div class="trial-body" id="iv-who" style="font-size:12px;line-height:1.6;margin-bottom:14px;text-align:center;"></div>
+      <div class="login-field">
+        <label class="login-label" for="iv-new">Choose a password</label>
+        <input type="password" class="login-input" id="iv-new" autocomplete="new-password" required>
+        <div class="pw-hint">At least 12 characters. A short phrase of a few words works well. Don't include your email address.</div>
+      </div>
+      <div class="login-field">
+        <label class="login-label" for="iv-new2">Confirm password</label>
+        <input type="password" class="login-input" id="iv-new2" autocomplete="new-password" required>
+      </div>
+      <button class="login-btn" id="iv-btn" type="submit">Create my account</button>
+      <div class="login-error" id="iv-err" style="display:none;"></div>
+    </form>
+    <div class="login-alt"><a href="#" onclick="showLoginPanel('login');return false;">← Back to sign in</a></div>
+  </div>
 </div>
 
 <!-- SET-YOUR-PASSWORD (first login after an admin created or reset the account) -->
@@ -767,6 +836,45 @@ select.fi:focus{border-color:rgba(200,146,42,.4);}
     <div class="login-error" id="pw-err" style="display:none;"></div>
     <div style="text-align:center;margin-top:14px;"><a href="#" onclick="closePasswordOverlay();doLogout();return false;" style="font-size:11px;color:var(--text3);">Sign out</a></div>
   </form>
+</div>
+
+<!-- TWO-STEP VERIFICATION SETUP (required for every account) -->
+<div id="mfa-overlay" role="dialog" aria-modal="true" aria-labelledby="mfa-title">
+  <div class="pw-card">
+    <div id="mfs-1">
+      <div class="trial-icon">📱</div>
+      <div class="trial-title" id="mfa-title" style="text-align:center;">Set up two-step verification</div>
+      <div class="trial-body" style="margin-bottom:14px;text-align:center;">Patient information needs a second lock. You'll enter a code from an app on your phone each time you sign in.</div>
+      <ol class="mfa-steps">
+        <li>Install an authenticator app (Microsoft Authenticator, Google Authenticator, 1Password, Authy).</li>
+        <li>Scan this code with the app, or type the key in.</li>
+        <li>Enter the 6-digit code it shows.</li>
+      </ol>
+      <img class="mfa-qr" id="mfa-qr" alt="QR code for your authenticator app" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==">
+      <div class="mfa-secret" id="mfa-secret" aria-label="Setup key"></div>
+      <form onsubmit="return submitMfaEnroll(event)" style="margin-top:14px;">
+        <div class="login-field">
+          <label class="login-label" for="mfe-code">6-digit code</label>
+          <input type="text" class="login-input" id="mfe-code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="123456" required>
+        </div>
+        <button class="login-btn" id="mfe-btn" type="submit">Turn on two-step verification</button>
+        <div class="login-error" id="mfe-err" style="display:none;"></div>
+      </form>
+      <div style="text-align:center;margin-top:14px;"><a href="#" onclick="doLogout();return false;" style="font-size:11px;color:var(--text3);">Sign out</a></div>
+    </div>
+    <div id="mfs-2" style="display:none;">
+      <div class="trial-icon">🔑</div>
+      <div class="trial-title" style="text-align:center;">Save your recovery codes</div>
+      <div class="trial-body" style="text-align:center;">If you lose your phone, each code below signs you in once. They are shown only now. Keep them somewhere safe, not in your email.</div>
+      <div class="rc-grid" id="rc-grid"></div>
+      <div class="rc-actions">
+        <button type="button" class="btn-sm" onclick="copyRecovery()">Copy codes</button>
+        <button type="button" class="btn-sm" onclick="downloadRecovery()">Download .txt</button>
+      </div>
+      <label class="rc-check"><input type="checkbox" id="rc-saved" onchange="document.getElementById('rc-go').disabled=!this.checked"> I have saved these recovery codes.</label>
+      <button class="login-btn" id="rc-go" type="button" disabled onclick="finishMfaSetup()">Continue to PracticePing</button>
+    </div>
+  </div>
 </div>
 
 <!-- APP -->
@@ -1023,10 +1131,43 @@ select.fi:focus{border-color:rgba(200,146,42,.4);}
       <div class="view" id="view-settings">
         <div class="st-scroll">
           <div class="view-title" style="margin-bottom:20px;">Settings</div>
+          <!-- USERS AND ACCESS (admins) -->
+          <div class="st-card admin-only" id="users-card">
+            <div class="st-head"><div class="st-htitle">👥 Users and access</div></div>
+            <div class="st-body">
+              <div style="font-size:12px;color:var(--text2);line-height:1.6;margin-bottom:14px;">
+                Everyone signs in with their own email, password and two-step code. <strong>Admins</strong> can do everything, including users and settings.
+                <strong>Managers</strong> run the day-to-day: send messages, import schedules, answer requests. <strong>Auditors</strong> can look at everything and read the activity log, but cannot change or send anything.
+              </div>
+              <div class="u-list" id="users-list"><div style="font-size:12px;color:var(--text3);">Loading…</div></div>
+              <form class="u-add" onsubmit="return submitAddUser(event)">
+                <div><div class="fi-lbl">Name</div><input class="fi" id="au-name" autocomplete="off" required maxlength="120"></div>
+                <div><div class="fi-lbl">Email</div><input class="fi" id="au-email" type="email" autocomplete="off" required maxlength="255"></div>
+                <div><div class="fi-lbl">Role</div><select class="fi" id="au-role"><option value="manager">Manager</option><option value="auditor">Auditor</option><option value="admin">Admin</option></select></div>
+                <div><button class="btn-sm" id="au-btn" type="submit">Send invitation</button></div>
+              </form>
+              <div class="login-error" id="au-err" style="display:none;text-align:left;margin-top:10px;"></div>
+              <div class="pw-hint">The invitation is an emailed link, good for 3 days. It asks them to choose a password and set up two-step verification.</div>
+            </div>
+          </div>
+          <!-- ACTIVITY LOG (admins and auditors) -->
+          <div class="st-card audit-only" id="audit-card">
+            <div class="st-head"><div class="st-htitle">📜 Activity log</div></div>
+            <div class="st-body">
+              <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:10px;">
+                <input class="fi" id="al-q" placeholder="Filter, for example: login, invite, send" style="max-width:300px;" oninput="auditFilterSoon()">
+                <button class="btn-sm" type="button" onclick="loadAudit(true)">↻ Refresh</button>
+              </div>
+              <div id="al-list"><div style="font-size:12px;color:var(--text3);">Loading…</div></div>
+              <div style="margin-top:10px;"><button class="btn-sm" type="button" id="al-more" style="display:none;" onclick="loadAudit(false)">Show older</button></div>
+              <div class="pw-hint">Records who signed in, who sent messages, imports, consent and opt-out changes, and user changes. It never contains patient names or message text.</div>
+            </div>
+          </div>
           <!-- ACCOUNT SECURITY -->
           <div class="st-card" id="pw-card">
             <div class="st-head"><div class="st-htitle">🔐 Account Security</div></div>
             <div class="st-body">
+              <div id="mfa-status" style="font-size:12px;color:var(--text2);margin-bottom:12px;"></div>
               <form onsubmit="return submitPasswordChange(event)" style="display:flex;flex-direction:column;gap:12px;">
                 <div><div class="fi-lbl">Current password</div><input class="fi" type="password" id="pc-cur" autocomplete="current-password"></div>
                 <div><div class="fi-lbl">New password</div><input class="fi" type="password" id="pc-new" autocomplete="new-password"><div class="pw-hint">At least 12 characters. A short phrase of a few words works well. Don't include your email address.</div></div>
@@ -1356,6 +1497,10 @@ async function api(method, path, body = null) {
       showPasswordOverlay();
       throw new Error('Please set a new password to continue.');
     }
+    if (d.error === 'mfa_setup_required') {
+      showMfaSetup();
+      throw new Error('Set up two-step verification to continue.');
+    }
   }
 
   if (res.status === 402) {
@@ -1382,7 +1527,7 @@ async function api(method, path, body = null) {
 
   const data = await res.json();
   if (!res.ok) {
-    const err = new Error(data.error || 'Request failed');
+    const err = new Error(data.error === 'read_only' ? data.message : (data.error || 'Request failed'));
     err.fields = data.fields;  // per-field validation messages, when the route sends them
     throw err;
   }
@@ -1421,26 +1566,186 @@ async function doLogin() {
 
   try {
     const data = await api('POST', '/api/auth/login', { email, password: pass });
-    token = data.token;
-    user  = data.user;
-    localStorage.setItem('rr_token', token);
-    localStorage.setItem('rr_user', JSON.stringify(user));
-    if (user.mustChangePassword) {
-      // Admin-created / reset account: choose a new password before the app loads.
-      loginPasswordInMemory = pass;
+    if (data.mfaRequired) {
+      // Password accepted; the second step comes next. The short-lived token lives in memory only.
+      mfaToken = data.mfaToken;
       document.getElementById('l-pass').value = '';
       btn.disabled = false;
       btn.textContent = 'Sign In →';
-      showPasswordOverlay();
+      showLoginPanel('mfa');
       return;
     }
-    initApp();
+    finishSignIn(data, pass);
   } catch (e) {
     err.textContent = e.message;
     err.style.display = 'block';
     btn.disabled = false;
     btn.textContent = 'Sign In →';
   }
+}
+
+// A signed-in session: store it, then continue to the forced password change, two-step setup, or the app.
+function finishSignIn(data, pass) {
+  token = data.token;
+  user  = data.user;
+  localStorage.setItem('rr_token', token);
+  localStorage.setItem('rr_user', JSON.stringify(user));
+  mfaToken = null;
+  const btn = document.getElementById('l-btn');
+  if (user.mustChangePassword) {
+    // Admin-created / reset account: choose a new password before the app loads.
+    loginPasswordInMemory = pass || null;
+    document.getElementById('l-pass').value = '';
+    btn.disabled = false;
+    btn.textContent = 'Sign In →';
+    showPasswordOverlay();
+    return;
+  }
+  initApp();
+}
+
+// ═══════════════════ TWO-STEP VERIFICATION ═══════════════════
+let mfaToken = null, mfaRecovery = false, inviteToken = null, recoveryList = [];
+
+function toggleRecovery() {
+  mfaRecovery = !mfaRecovery;
+  const c = document.getElementById('mfa-code');
+  c.value = ''; c.maxLength = mfaRecovery ? 11 : 6; c.inputMode = mfaRecovery ? 'text' : 'numeric';
+  c.placeholder = mfaRecovery ? 'xxxxx-xxxxx' : '123456';
+  document.getElementById('mfa-label').textContent = mfaRecovery ? 'Recovery code' : 'Authentication code';
+  document.getElementById('mfa-sub').textContent = mfaRecovery ? 'Enter one of your saved recovery codes' : 'Enter the 6-digit code from your authenticator app';
+  document.getElementById('mfa-toggle').textContent = mfaRecovery ? 'Use my authenticator app instead' : 'Lost your phone? Use a recovery code';
+  document.getElementById('mfa-err').style.display = 'none';
+  c.focus();
+}
+
+async function submitMfa(e) {
+  e.preventDefault();
+  const err = document.getElementById('mfa-err'), btn = document.getElementById('mfa-btn');
+  const val = document.getElementById('mfa-code').value.trim();
+  err.style.display = 'none';
+  if (!mfaToken) { showLoginPanel('login'); return false; }
+  btn.disabled = true; btn.textContent = 'Checking…';
+  try {
+    const body = mfaRecovery ? { mfaToken, recoveryCode: val } : { mfaToken, code: val.replace(/\s/g, '') };
+    const d = await api('POST', '/api/auth/mfa/verify', body);
+    document.getElementById('mfa-code').value = '';
+    if (mfaRecovery) { toggleRecovery(); toggleRecovery(); }
+    finishSignIn(d, null);
+    if (typeof d.recoveryCodesLeft === 'number' && d.recoveryCodesLeft <= 2) {
+      setTimeout(() => toast('err', '!', `Only ${d.recoveryCodesLeft} recovery code${d.recoveryCodesLeft === 1 ? '' : 's'} left. Ask an administrator to reset your two-step verification to get new ones.`), 600);
+    }
+  } catch (ex) {
+    err.textContent = ex.message; err.style.display = 'block';
+    if (/start again/i.test(ex.message)) mfaToken = null;
+  } finally {
+    btn.disabled = false; btn.textContent = 'Verify and sign in';
+  }
+  return false;
+}
+
+async function showMfaSetup() {
+  document.getElementById('mfa-overlay').classList.add('visible');
+  document.getElementById('mfs-1').style.display = '';
+  document.getElementById('mfs-2').style.display = 'none';
+  stopIdleTimer();
+  const err = document.getElementById('mfe-err');
+  err.style.display = 'none';
+  try {
+    const d = await api('GET', '/api/auth/mfa/setup');
+    document.getElementById('mfa-qr').src = d.qr;
+    document.getElementById('mfa-secret').textContent = d.secret.replace(/(.{4})/g, '$1 ').trim();
+    setTimeout(() => document.getElementById('mfe-code').focus(), 50);
+  } catch (ex) {
+    err.textContent = ex.message; err.style.display = 'block';
+  }
+}
+
+async function submitMfaEnroll(e) {
+  e.preventDefault();
+  const err = document.getElementById('mfe-err'), btn = document.getElementById('mfe-btn');
+  err.style.display = 'none';
+  btn.disabled = true; btn.textContent = 'Checking…';
+  try {
+    const d = await api('POST', '/api/auth/mfa/enroll', { code: document.getElementById('mfe-code').value.replace(/\s/g, '') });
+    token = d.token; user = d.user;
+    localStorage.setItem('rr_token', token);
+    localStorage.setItem('rr_user', JSON.stringify(user));
+    recoveryList = d.recoveryCodes || [];
+    const grid = document.getElementById('rc-grid');
+    grid.textContent = '';
+    recoveryList.forEach(c => { const el = document.createElement('code'); el.textContent = c; grid.appendChild(el); });
+    document.getElementById('mfe-code').value = '';
+    document.getElementById('rc-saved').checked = false;
+    document.getElementById('rc-go').disabled = true;
+    document.getElementById('mfs-1').style.display = 'none';
+    document.getElementById('mfs-2').style.display = '';
+  } catch (ex) {
+    err.textContent = ex.message; err.style.display = 'block';
+  } finally {
+    btn.disabled = false; btn.textContent = 'Turn on two-step verification';
+  }
+  return false;
+}
+
+function copyRecovery() {
+  const text = recoveryList.join('\n');
+  const fallback = () => { const r = document.createRange(); r.selectNodeContents(document.getElementById('rc-grid')); const s = getSelection(); s.removeAllRanges(); s.addRange(r); toast('ok', '✓', 'Codes selected. Press Ctrl+C to copy.'); };
+  if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(() => toast('ok', '✓', 'Recovery codes copied.'), fallback);
+  else fallback();
+}
+function downloadRecovery() {
+  const body = 'PracticePing recovery codes for ' + ((user && user.email) || '') + '\nEach code works once. Keep this file somewhere safe.\n\n' + recoveryList.join('\n') + '\n';
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([body], { type: 'text/plain' }));
+  a.download = 'practiceping-recovery-codes.txt';
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+}
+function finishMfaSetup() {
+  recoveryList = [];
+  document.getElementById('rc-grid').textContent = '';
+  document.getElementById('mfa-overlay').classList.remove('visible');
+  initApp();
+}
+
+// ═══════════════════ INVITATIONS ═══════════════════
+async function openInvite(tok) {
+  inviteToken = tok;
+  showLoginPanel('invite');
+  const err = document.getElementById('iv-err'), who = document.getElementById('iv-who');
+  try {
+    const d = await api('POST', '/api/auth/invite/info', { token: tok });
+    document.getElementById('iv-sub').textContent = 'Join ' + d.practiceName;
+    who.textContent = '';
+    const b = document.createElement('strong'); b.textContent = d.name;
+    who.append(b, document.createTextNode(`, you've been invited to ${d.practiceName} as ${(d.roleLabel || d.role).split(':')[0]}. Signing in as ${d.email}.`));
+  } catch (ex) {
+    inviteToken = null;
+    document.getElementById('iv-form').style.display = 'none';
+    err.textContent = ex.message; err.style.display = 'block';
+    document.getElementById('iv-sub').textContent = 'Invitation';
+  }
+}
+
+async function submitInvite(e) {
+  e.preventDefault();
+  const err = document.getElementById('iv-err'), btn = document.getElementById('iv-btn');
+  const next = document.getElementById('iv-new').value, again = document.getElementById('iv-new2').value;
+  const fail = m => { err.textContent = m; err.style.display = 'block'; };
+  err.style.display = 'none';
+  const problem = passwordProblem(next, null);
+  if (problem) return fail(problem), false;
+  if (next !== again) return fail('The two passwords do not match.'), false;
+  btn.disabled = true; btn.textContent = 'Creating…';
+  try {
+    const d = await api('POST', '/api/auth/invite/accept', { token: inviteToken, newPassword: next });
+    inviteToken = null;
+    ['iv-new', 'iv-new2'].forEach(id => { document.getElementById(id).value = ''; });
+    finishSignIn(d, null);
+  } catch (ex) { fail(ex.message); }
+  finally { btn.disabled = false; btn.textContent = 'Create my account'; }
+  return false;
 }
 
 // ═══════════════════ PASSWORD CHANGE ═══════════════════
@@ -1534,9 +1839,9 @@ let resetToken = null;   // from the emailed link; kept in memory only
 
 function showLoginPanel(name) {
   document.getElementById('login-screen').style.display = 'flex';
-  const boxes = { login: 'login-box', forgot: 'forgot-box', reset: 'reset-box' };
+  const boxes = { login: 'login-box', forgot: 'forgot-box', reset: 'reset-box', mfa: 'mfa-box', invite: 'invite-box' };
   Object.entries(boxes).forEach(([k, id]) => { document.getElementById(id).style.display = k === name ? '' : 'none'; });
-  ['l-err', 'fp-err', 'rs-err', 'fp-done'].forEach(id => { document.getElementById(id).style.display = 'none'; });
+  ['l-err', 'fp-err', 'rs-err', 'fp-done', 'mfa-err', 'iv-err'].forEach(id => { document.getElementById(id).style.display = 'none'; });
   if (name === 'forgot') {
     document.getElementById('fp-form').style.display = '';
     document.getElementById('fp-email').value = document.getElementById('l-email').value;
@@ -1547,6 +1852,14 @@ function showLoginPanel(name) {
     setTimeout(() => document.getElementById('rs-new').focus(), 30);
   }
   if (name === 'login') document.getElementById('l-ok').style.display = 'none';
+  if (name === 'mfa') {
+    if (mfaRecovery) toggleRecovery();
+    setTimeout(() => document.getElementById('mfa-code').focus(), 30);
+  }
+  if (name === 'invite') {
+    document.getElementById('iv-form').style.display = '';
+    setTimeout(() => document.getElementById('iv-new').focus(), 30);
+  }
 }
 
 async function submitForgot(e) {
@@ -1603,8 +1916,11 @@ function doLogout() {
   localStorage.removeItem('rr_token');
   localStorage.removeItem('rr_user');
   token = null; user = null;
-  loginPasswordInMemory = null;
+  loginPasswordInMemory = null; mfaToken = null; inviteToken = null; recoveryList = [];
   document.getElementById('pw-overlay').classList.remove('visible');
+  document.getElementById('mfa-overlay').classList.remove('visible');
+  document.body.classList.remove('role-admin', 'role-manager', 'role-auditor');
+  showLoginPanel('login');
   stopIdleTimer();
   document.getElementById('session-warning').style.display = 'none';
   document.getElementById('app').classList.remove('visible');
@@ -1666,7 +1982,13 @@ function hideSessionWarning() {
 // ═══════════════════ INIT ═══════════════════
 window.addEventListener('DOMContentLoaded', () => {
   const resetLink = /^#reset=([A-Za-z0-9_-]{20,100})$/.exec(location.hash);
-  if (resetLink) {
+  const inviteLink = /^#invite=([A-Za-z0-9_-]{20,100})$/.exec(location.hash);
+  if (inviteLink) {
+    // Opened from an invitation email: take the token out of the address bar right away.
+    history.replaceState(null, '', location.pathname + location.search);
+    localStorage.removeItem('rr_token'); localStorage.removeItem('rr_user'); token = null; user = null;
+    openInvite(inviteLink[1]);
+  } else if (resetLink) {
     // Opened from the emailed link: take the token out of the address bar right away.
     resetToken = resetLink[1];
     history.replaceState(null, '', location.pathname + location.search);
@@ -1682,8 +2004,12 @@ window.addEventListener('DOMContentLoaded', () => {
     `${days[d.getDay()]}, ${months[d.getMonth()]} ${d.getDate()}`;
 });
 
+const ROLE_NAMES = { admin: 'Admin', manager: 'Manager', auditor: 'Auditor' };
 async function initApp() {
+  if (user && user.mfaSetupRequired) { document.getElementById('login-screen').style.display = 'none'; showMfaSetup(); return; }
   document.getElementById('login-screen').style.display = 'none';
+  document.body.classList.remove('role-admin', 'role-manager', 'role-auditor');
+  document.body.classList.add('role-' + (user.role || 'manager'));
   document.getElementById('app').classList.add('visible');
   startIdleTimer();
 
@@ -1698,8 +2024,11 @@ async function initApp() {
   }
 
   // Set user info
-  document.getElementById('user-name').textContent = user.name;
+  document.getElementById('user-name').textContent = user.name + (user.role === 'admin' ? '' : ' · ' + (ROLE_NAMES[user.role] || ''));
   document.getElementById('user-ava').textContent = user.name[0];
+  const ms = document.getElementById('mfa-status');
+  if (ms) ms.textContent = user.mfaEnabled ? '✓ Two-step verification is on for your account.' : 'Two-step verification is off for your account.';
+  if (user.role === 'auditor') toast('ok', '👁', 'You have read-only access. You can look at everything but not change or send.');
 
   // Drag-and-drop CSV onto the import strip
   const strip = document.getElementById('sb-import-strip');
@@ -1734,6 +2063,8 @@ async function initApp() {
     loadSettings(),
     loadImportHistory(),
   ]);
+  loadUsers();        // admins only; the function returns at once for other roles
+  loadAudit(true);    // admins and auditors only
 }
 
 // ═══════════════════ SCHEDULE ═══════════════════
@@ -3321,10 +3652,10 @@ async function markDoNotContact() {
 
 // ═══════════════════ SETTINGS ACCORDION ═══════════════════
 // Each settings card is a collapsible row with a one-line status; one card is open at a time.
-const ACC_ORDER = ['sr', 'gbp', 'phys', 'import', 'brand', 'athena', 'optouts', 'mods', 'pw'];
+const ACC_ORDER = ['sr', 'gbp', 'phys', 'import', 'brand', 'athena', 'optouts', 'mods', 'users', 'audit', 'pw'];
 const ACC_TITLES = { sr: 'Patient Texting', gbp: 'Google Business', phys: 'Physician', import: 'Patient Data Import',
                      brand: 'Patient Form Branding', athena: 'athenahealth API', optouts: 'Do-not-contact',
-                     mods: 'Modules', pw: 'Account Security' };
+                     mods: 'Modules', users: 'Users and access', audit: 'Activity log', pw: 'Account Security' };
 let accReady = false, accAutoDone = false;
 const accCard = key => document.querySelector(`#view-settings .st-card[data-acc="${key}"]`);
 function setSum(key, text) {
@@ -3365,7 +3696,9 @@ function initSettingsAccordion() {
     head.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleAcc(c); } });
     parent.appendChild(c);   // re-append in the order above
   }
-  setSum('pw', 'Change your password');
+  setSum('pw', 'Password and two-step');
+  // Practice-wide settings belong to admins; managers and auditors see only what they can use.
+  ['sr', 'gbp', 'phys', 'brand', 'athena', 'mods'].forEach(k => { const c = byKey[k]; if (c) c.classList.add('admin-only'); });
   accReady = true;
 }
 // First visit: open texting registration if it still needs the practice's attention.
@@ -3376,6 +3709,102 @@ function settingsAutoOpen(status) {
     const c = accCard('sr'); if (c) toggleAcc(c, true);
   }
 }
+// ═══════════════════ USERS AND ACCESS ═══════════════════
+const escH = v => String(v == null ? '' : v).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+let usersRoles = [];
+async function loadUsers() {
+  if (!user || user.role !== 'admin') return;
+  try {
+    const d = await api('GET', '/api/users');
+    usersRoles = d.roles || [];
+    const list = document.getElementById('users-list');
+    const when = v => v ? new Date(v).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : 'never';
+    list.innerHTML = d.users.map(u => {
+      const roleSel = u.isYou ? `<span>${escH(ROLE_NAMES[u.role] || u.role)}</span>`
+        : `<select class="fi" style="width:auto;padding:5px 8px;font-size:11px;" onchange="userRole('${escH(u.id)}',this.value,this)" aria-label="Role for ${escH(u.name)}">${d.roles.map(r => `<option value="${escH(r.key)}" ${r.key === u.role ? 'selected' : ''}>${escH(ROLE_NAMES[r.key] || r.key)}</option>`).join('')}</select>`;
+      const acts = [];
+      if (u.status === 'invited') acts.push(['resend-invite', 'Resend invitation']);
+      if (u.status === 'active' && !u.isYou) { acts.push(['send-reset', 'Send password reset']); if (u.mfa) acts.push(['reset-mfa', 'Reset two-step', 'danger']); }
+      if (!u.isYou) acts.push([u.active ? 'deactivate' : 'reactivate', u.active ? 'Deactivate' : 'Reactivate', u.active ? 'danger' : '']);
+      const chip = u.locked ? '<span class="u-chip locked">Locked</span>' : `<span class="u-chip ${escH(u.status)}">${u.status === 'active' ? 'Active' : u.status === 'invited' ? 'Invited' : 'Deactivated'}</span>`;
+      return `<div class="u-row">
+        <div class="u-who"><div class="u-name">${escH(u.name)} ${u.isYou ? '<span class="u-chip you">You</span>' : ''}</div><div class="u-mail">${escH(u.email)}</div></div>
+        <div class="u-meta">${roleSel}${chip}<span>${u.mfa ? '✓ Two-step on' : 'Two-step off'}</span><span>Last sign-in: ${escH(when(u.last_login_at))}</span></div>
+        <div class="u-acts">${acts.map(a => `<button type="button" class="u-act ${a[2] || ''}" onclick="userAct('${escH(u.id)}','${a[0]}','${escH(u.name).replace(/'/g, '')}')">${a[1]}</button>`).join('')}</div>
+      </div>`;
+    }).join('');
+    setSum('users', `${d.users.length} ${d.users.length === 1 ? 'person' : 'people'}`);
+  } catch (e) { document.getElementById('users-list').textContent = 'Could not load users: ' + e.message; }
+}
+async function submitAddUser(e) {
+  e.preventDefault();
+  const err = document.getElementById('au-err'), btn = document.getElementById('au-btn');
+  err.style.display = 'none'; btn.disabled = true;
+  try {
+    const email = document.getElementById('au-email').value.trim();
+    const d = await api('POST', '/api/users', { name: document.getElementById('au-name').value.trim(), email, role: document.getElementById('au-role').value });
+    toast(d.emailed ? 'ok' : 'err', d.emailed ? '✓' : '!', d.emailed ? `Invitation emailed to ${email}.` : 'Account created, but the email could not be sent. Use "Resend invitation".');
+    document.getElementById('au-name').value = ''; document.getElementById('au-email').value = '';
+    loadUsers();
+  } catch (ex) { err.textContent = ex.message; err.style.display = 'block'; }
+  finally { btn.disabled = false; }
+  return false;
+}
+async function userRole(id, role, sel) {
+  try { await api('PUT', '/api/users/' + id, { role }); toast('ok', '✓', 'Role changed. They will need to sign in again.'); }
+  catch (ex) { toast('err', '✕', ex.message); }
+  loadUsers();
+}
+async function userAct(id, act, name) {
+  const asks = {
+    'reset-mfa': `Reset two-step verification for ${name}? They will sign in with their password and set it up again.`,
+    deactivate: `Deactivate ${name}? They are signed out immediately and can no longer sign in.`,
+  };
+  if (asks[act] && !confirm(asks[act])) return;
+  try {
+    if (act === 'deactivate' || act === 'reactivate') await api('PUT', '/api/users/' + id, { active: act === 'reactivate' });
+    else {
+      const d = await api('POST', `/api/users/${id}/${act}`);
+      if (act !== 'reset-mfa' && d.emailed === false) { toast('err', '!', 'The email could not be sent. Try again in a minute.'); return; }
+    }
+    toast('ok', '✓', { 'resend-invite': 'Invitation sent again.', 'send-reset': 'Password reset email sent.', 'reset-mfa': 'Two-step verification reset.', deactivate: 'Deactivated.', reactivate: 'Reactivated.' }[act]);
+  } catch (ex) { toast('err', '✕', ex.message); }
+  loadUsers();
+}
+
+// ═══════════════════ ACTIVITY LOG ═══════════════════
+const AUDIT_LABELS = {
+  'auth.login': 'Signed in', 'auth.login_recovery_code': 'Signed in with a recovery code', 'auth.login_failed': 'Failed sign-in attempt',
+  'auth.locked': 'Account locked after failed attempts', 'auth.mfa_enrolled': 'Turned on two-step verification', 'auth.mfa_failed': 'Wrong two-step code',
+  'auth.password_change': 'Changed password', 'user.invite': 'Invited a user', 'user.invite_accepted': 'Accepted an invitation', 'user.invite_resent': 'Resent an invitation',
+  'user.deactivate': 'Deactivated a user', 'user.reactivate': 'Reactivated a user', 'user.role_change': 'Changed a user\'s role', 'user.mfa_reset': 'Reset a user\'s two-step',
+  'user.password_reset_sent': 'Sent a password reset', 'outreach.send': 'Sent or scheduled a message', 'queue.cancel': 'Cancelled a queued message',
+  'import.csv': 'Imported a schedule file', 'schedule.view': 'Viewed the schedule', 'patient.view': 'Viewed a patient',
+  'suppression.add': 'Added to the do-not-contact list', 'suppression.remove': 'Removed from the do-not-contact list', 'sms_consent.record': 'Recorded text consent',
+  'request.send_availability': 'Sent appointment availability', 'lapsed.reengage': 'Re-engaged a lapsed patient', 'lapsed.reengage.bulk': 'Re-engaged lapsed patients',
+  'noshow.notify': 'Notified a no-show', 'sms_registration.save': 'Saved texting registration', 'integration.request': 'Requested an EHR connection',
+  'import.email_address_regenerate': 'Changed the import email address',
+};
+let auditBefore = null, auditTimer = null;
+function auditFilterSoon() { clearTimeout(auditTimer); auditTimer = setTimeout(() => loadAudit(true), 350); }
+async function loadAudit(reset) {
+  if (!user || !(user.permissions || []).includes('audit:read')) return;
+  const listEl = document.getElementById('al-list'), more = document.getElementById('al-more');
+  if (reset) { auditBefore = null; listEl.textContent = 'Loading…'; }
+  const q = document.getElementById('al-q').value.trim();
+  try {
+    const d = await api('GET', `/api/audit-log?limit=50${q ? '&q=' + encodeURIComponent(q) : ''}${auditBefore ? '&before=' + encodeURIComponent(auditBefore) : ''}`);
+    const rows = d.events.map(ev => `<div class="al-row">
+      <div class="al-time">${escH(new Date(ev.created_at).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }))}</div>
+      <div class="al-what"><strong>${escH(ev.user_name || ev.user_email || 'Unknown or not signed in')}</strong> · ${escH(AUDIT_LABELS[ev.action] || ev.action)}</div>
+      <div class="al-ip">${escH(ev.ip || '')}</div></div>`).join('');
+    if (reset) listEl.innerHTML = rows || '<div style="font-size:12px;color:var(--text3);">No activity matches.</div>';
+    else listEl.insertAdjacentHTML('beforeend', rows);
+    if (d.events.length) auditBefore = d.events[d.events.length - 1].created_at;
+    more.style.display = d.hasMore ? '' : 'none';
+  } catch (ex) { listEl.textContent = 'Could not load the activity log: ' + ex.message; }
+}
+
 async function toggleModule(el, key) {
   if (el.dataset.busy) return;
   const want = !el.classList.contains('on');
