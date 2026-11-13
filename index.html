@@ -534,6 +534,10 @@ select.fi:focus{border-color:rgba(200,146,42,.4);}
 .av-subj:focus{border-color:var(--gold);}
 .av-slots{width:100%;background:var(--ink3);border:1.5px solid var(--border2);border-radius:8px;padding:9px 12px;font-size:13px;color:var(--text);font-family:var(--sans);outline:none;resize:vertical;min-height:80px;transition:border-color .15s;line-height:1.5;}
 .av-slots:focus{border-color:var(--gold);}
+.av-slot-row{display:grid;grid-template-columns:26px 1fr 1fr;gap:8px;align-items:center;margin-bottom:8px;}
+.av-slot-key{font-weight:700;font-size:13px;color:var(--gold);text-align:center;}
+.av-slot-row input{width:100%;background:var(--ink3);border:1.5px solid var(--border2);border-radius:8px;padding:8px 10px;font-size:13px;color:var(--text);font-family:var(--sans);outline:none;}
+.av-slot-row input:focus{border-color:var(--gold);}
 .av-msg{width:100%;background:var(--ink3);border:1.5px solid var(--border2);border-radius:8px;padding:10px 12px;font-size:12px;color:var(--text);font-family:var(--sans);outline:none;resize:vertical;min-height:140px;line-height:1.65;transition:border-color .15s;}
 .av-msg:focus{border-color:var(--gold);}
 .av-footer{padding:14px 22px;border-top:1px solid var(--border);display:flex;align-items:center;gap:10px;}
@@ -1117,6 +1121,8 @@ select.fi:focus{border-color:rgba(200,146,42,.4);}
                 <option value="">All</option>
                 <option value="new">New</option>
                 <option value="contacted">Contacted</option>
+                <option value="confirmed">Patient chose a time</option>
+                <option value="replied">Patient replied</option>
                 <option value="scheduled">Scheduled</option>
                 <option value="cancelled">Cancelled</option>
               </select>
@@ -1417,8 +1423,9 @@ select.fi:focus{border-color:rgba(200,146,42,.4);}
         <input class="av-subj" id="av-subj" type="text" placeholder="Your appointment request — Westside Medical">
       </div>
       <div>
-        <div class="av-label">Available Slots <span style="color:var(--rose);">*</span></div>
-        <textarea class="av-slots" id="av-slots" placeholder="e.g. Mon May 19 @ 9:00am&#10;Tue May 20 @ 2:30pm&#10;Thu May 22 @ 11:00am" oninput="avBuildMessage()"></textarea>
+        <div class="av-label">Available times <span style="color:var(--rose);">*</span> <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--text3);">(the patient replies with the letter)</span></div>
+        <div id="av-slot-rows"></div>
+        <button type="button" class="u-act" id="av-add-slot" onclick="avAddSlot()">+ Add another time</button>
       </div>
       <div>
         <div class="av-label" style="display:flex;justify-content:space-between;">
@@ -3388,7 +3395,7 @@ async function loadRequests() {
     reqs.forEach(r => reqMap[r.id] = r);
 
     // Update badge for new requests (desktop tab + mobile menu)
-    const newCount = reqs.filter(r => r.status === 'new').length;
+    const newCount = reqs.filter(r => ['new', 'confirmed', 'replied'].includes(r.status)).length;   // everything waiting on staff
     const badge  = document.getElementById('req-badge');
     const badgeM = document.getElementById('req-badge-m');
     if (newCount > 0) {
@@ -3404,37 +3411,48 @@ async function loadRequests() {
       return;
     }
 
-    const statusColors = { new: '#1A6FC4', contacted: '#9A6B1F', scheduled: '#0A7A6C', cancelled: '#8A97B4' };
-    el.innerHTML = reqs.map(r => `
-      <div style="background:var(--ink2);border:1px solid var(--border);border-radius:12px;padding:16px 18px;margin-bottom:10px;">
+    const statusColors = { new: '#1A6FC4', contacted: '#9A6B1F', confirmed: '#1F7A4D', replied: '#B8620A', scheduled: '#0A7A6C', cancelled: '#8A97B4' };
+    const statusText = { confirmed: 'Patient chose a time', replied: 'Patient replied' };
+    const prefText = { phone: '📞 Prefers a phone call', text: '💬 Prefers text', email: '✉ Prefers email' };
+    const stamp = v => new Date(v).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+    const btn = (onclick, css, label) => `<button onclick="${onclick}" style="font-size:11px;padding:5px 12px;border-radius:6px;${css}cursor:pointer;">${label}</button>`;
+    el.innerHTML = reqs.map(r => {
+      const color = statusColors[r.status] || '#8A97B4';
+      const offered = Array.isArray(r.offered_slots) ? r.offered_slots : null;
+      const chose = r.status === 'confirmed' || (r.selected_slot && r.status === 'scheduled');
+      return `
+      <div style="background:var(--ink2);border:1px solid ${r.status === 'confirmed' || r.status === 'replied' ? color : 'var(--border)'};border-radius:12px;padding:16px 18px;margin-bottom:10px;">
         <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:10px;">
           <div>
-            <div style="font-size:14px;font-weight:600;color:var(--text);">${r.patient_name}</div>
+            <div style="font-size:14px;font-weight:600;color:var(--text);">${escH(r.patient_name)}</div>
             <div style="font-size:12px;color:var(--text2);margin-top:2px;">
-              ${r.patient_phone ? `📞 ${r.patient_phone}` : ''}
+              ${r.patient_phone ? `📞 ${escH(r.patient_phone)}` : ''}
               ${r.patient_phone && r.patient_email ? ' · ' : ''}
-              ${r.patient_email ? `✉ ${r.patient_email}` : ''}
+              ${r.patient_email ? `✉ ${escH(r.patient_email)}` : ''}
             </div>
           </div>
-          <span style="font-size:10px;font-weight:700;padding:3px 10px;border-radius:10px;background:${statusColors[r.status]}22;color:${statusColors[r.status]};white-space:nowrap;text-transform:uppercase;">${r.status}</span>
+          <span style="font-size:10px;font-weight:700;padding:3px 10px;border-radius:10px;background:${color}22;color:${color};white-space:nowrap;text-transform:uppercase;">${escH(statusText[r.status] || r.status)}</span>
         </div>
         <div style="display:flex;flex-wrap:wrap;gap:8px;font-size:11px;color:var(--text3);margin-bottom:12px;">
-          ${r.preferred_physician_name ? `<span>👨‍⚕️ ${r.preferred_physician_name}</span>` : ''}
+          ${r.preferred_contact ? `<span style="font-weight:600;color:var(--text2);">${prefText[r.preferred_contact] || ''}</span>` : ''}
+          ${r.preferred_physician_name ? `<span>👨‍⚕️ ${escH(r.preferred_physician_name)}</span>` : ''}
           ${r.preferred_date ? `<span>📅 ${new Date(r.preferred_date).toLocaleDateString()}</span>` : ''}
-          ${r.preferred_time_slot && r.preferred_time_slot !== 'any' ? `<span>🕐 ${r.preferred_time_slot}</span>` : ''}
+          ${r.preferred_time_slot && r.preferred_time_slot !== 'any' ? `<span>🕐 ${escH(r.preferred_time_slot)}</span>` : ''}
           <span>${r.patient_type === 'new' ? '🆕 New patient' : '↩ Existing patient'}</span>
-          ${r.sms_consent ? '<span>✓ SMS consent</span>' : ''}
+          ${r.sms_consent ? '<span>✓ Text consent</span>' : ''}${r.email_consent ? '<span>✓ Email consent</span>' : ''}
           <span style="margin-left:auto;">${new Date(r.created_at).toLocaleDateString()} ${new Date(r.created_at).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}</span>
         </div>
-        ${r.reason ? `<div style="font-size:12px;color:var(--text2);background:var(--ink3);border-radius:7px;padding:8px 12px;margin-bottom:12px;">${r.reason}</div>` : ''}
+        ${r.reason ? `<div style="font-size:12px;color:var(--text2);background:var(--ink3);border-radius:7px;padding:8px 12px;margin-bottom:12px;">${escH(r.reason)}</div>` : ''}
+        ${offered ? `<div style="font-size:12px;color:var(--text2);margin-bottom:10px;line-height:1.7;"><strong>Times offered by ${r.offered_channel === 'sms' ? 'text' : 'email'}</strong> (${escH(stamp(r.offered_at))}):<br>${offered.map(x => `<span style="${chose && r.selected_slot === x.key ? 'font-weight:700;color:#1F7A4D;' : ''}">${escH(x.key)}) ${escH(x.label)}${chose && r.selected_slot === x.key ? ' ✓' : ''}</span>`).join('<br>')}</div>` : ''}
+        ${r.replied_at ? `<div style="font-size:12px;color:var(--text);background:${color}14;border-left:3px solid ${color};border-radius:6px;padding:8px 12px;margin-bottom:12px;">💬 <strong>Patient:</strong> ${escH(r.patient_reply || '')} <span style="color:var(--text3);">· ${escH(stamp(r.replied_at))}</span></div>` : ''}
         <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;">
-          <button onclick="openAvModal('${r.id}')" style="font-size:11px;padding:5px 14px;border-radius:6px;border:none;background:linear-gradient(135deg,var(--gold),var(--gold2));color:#fff;cursor:pointer;font-weight:600;">📤 Send Available Slots</button>
-          ${r.status !== 'contacted'  ? `<button onclick="setReqStatus('${r.id}','contacted')"  style="font-size:11px;padding:5px 12px;border-radius:6px;border:1px solid var(--border2);background:var(--ink3);color:var(--text2);cursor:pointer;">Mark Contacted</button>` : ''}
-          ${r.status !== 'scheduled'  ? `<button onclick="setReqStatus('${r.id}','scheduled')"  style="font-size:11px;padding:5px 12px;border-radius:6px;border:1px solid rgba(10,122,108,.3);background:rgba(10,122,108,.08);color:var(--teal2);cursor:pointer;">Mark Scheduled</button>` : ''}
-          ${r.status !== 'cancelled'  ? `<button onclick="setReqStatus('${r.id}','cancelled')"  style="font-size:11px;padding:5px 12px;border-radius:6px;border:1px solid var(--border);background:none;color:var(--text3);cursor:pointer;">Cancel</button>` : ''}
+          <button onclick="openAvModal('${r.id}')" style="font-size:11px;padding:5px 14px;border-radius:6px;border:none;background:linear-gradient(135deg,var(--gold),var(--gold2));color:#fff;cursor:pointer;font-weight:600;">📤 ${offered ? 'Send New Times' : 'Send Available Times'}</button>
+          ${r.status !== 'contacted' && r.status !== 'confirmed' && r.status !== 'replied' ? btn(`setReqStatus('${r.id}','contacted')`, 'border:1px solid var(--border2);background:var(--ink3);color:var(--text2);', 'Mark Contacted') : ''}
+          ${r.status !== 'scheduled' ? btn(`setReqStatus('${r.id}','scheduled')`, r.status === 'confirmed' ? 'border:1px solid #0A7A6C;background:#0A7A6C;color:#fff;font-weight:600;' : 'border:1px solid rgba(10,122,108,.3);background:rgba(10,122,108,.08);color:var(--teal2);', r.status === 'confirmed' ? '✓ Booked it: Mark Scheduled' : 'Mark Scheduled') : ''}
+          ${r.status !== 'cancelled' ? btn(`setReqStatus('${r.id}','cancelled')`, 'border:1px solid var(--border);background:none;color:var(--text3);', 'Cancel') : ''}
         </div>
-      </div>
-    `).join('');
+      </div>`;
+    }).join('');
   } catch (e) {
     el.innerHTML = `<div style="color:var(--rose);font-size:13px;">${e.message}</div>`;
   }
@@ -3458,14 +3476,15 @@ function openAvModal(id) {
   const r = reqMap[id];
   if (!r) return;
   avReqId   = id;
-  avChannel = (r.sms_consent && r.patient_phone) ? 'sms' : 'email';
+  avChannel = (r.preferred_contact === 'email' && r.patient_email) ? 'email' : ((r.sms_consent && r.patient_phone) ? 'sms' : 'email');
 
   // Patient info block
   const parts = [];
-  parts.push(`<strong>${r.patient_name}</strong>`);
-  if (r.patient_phone)  parts.push(`📞 ${r.patient_phone}`);
-  if (r.patient_email)  parts.push(`✉ ${r.patient_email}`);
-  if (r.preferred_physician_name) parts.push(`👨‍⚕️ ${r.preferred_physician_name}`);
+  parts.push(`<strong>${escH(r.patient_name)}</strong>`);
+  if (r.patient_phone)  parts.push(`📞 ${escH(r.patient_phone)}`);
+  if (r.patient_email)  parts.push(`✉ ${escH(r.patient_email)}`);
+  if (r.preferred_contact) parts.push({ phone: 'Prefers a phone call', text: 'Prefers text', email: 'Prefers email' }[r.preferred_contact] || '');
+  if (r.preferred_physician_name) parts.push(`👨‍⚕️ ${escH(r.preferred_physician_name)}`);
   if (r.preferred_date) parts.push(`📅 Requested ${new Date(r.preferred_date).toLocaleDateString()}`);
   document.getElementById('av-patient-info').innerHTML = parts.join('<br>');
 
@@ -3481,12 +3500,12 @@ function openAvModal(id) {
   document.getElementById('av-subj').value = `Your appointment request — ${pname}`;
 
   avSetChannel(avChannel);
-  document.getElementById('av-slots').value = '';
+  avSlotsInit();
   document.getElementById('av-err').style.display = 'none';
   avBuildMessage();
 
   document.getElementById('av-overlay').style.display = 'flex';
-  document.getElementById('av-slots').focus();
+  const firstDate = document.querySelector('#av-slot-rows input'); if (firstDate) firstDate.focus();
 }
 
 function closeAvModal() {
@@ -3502,20 +3521,54 @@ function avSetChannel(ch) {
   avBuildMessage();
 }
 
+// The offered times: rows labelled A, B, C ... (up to E). The patient answers with the letter.
+const AV_LETTERS = ['A', 'B', 'C', 'D', 'E'];
+function avSlotsInit() { document.getElementById('av-slot-rows').textContent = ''; for (let i = 0; i < 3; i++) avAddSlot(); }
+function avAddSlot() {
+  const box = document.getElementById('av-slot-rows'), n = box.children.length;
+  if (n >= AV_LETTERS.length) return;
+  const row = document.createElement('div'); row.className = 'av-slot-row';
+  const key = document.createElement('span'); key.className = 'av-slot-key'; key.textContent = AV_LETTERS[n];
+  const d = document.createElement('input'); d.type = 'date'; d.setAttribute('aria-label', 'Date for option ' + AV_LETTERS[n]);
+  const t = document.createElement('input'); t.type = 'time'; t.step = 300; t.setAttribute('aria-label', 'Time for option ' + AV_LETTERS[n]);
+  d.oninput = t.oninput = avBuildMessage;
+  row.append(key, d, t); box.appendChild(row);
+  document.getElementById('av-add-slot').style.display = box.children.length >= AV_LETTERS.length ? 'none' : '';
+}
+// "Sunday, Nov 15, 2026 at 10:00 AM"
+function avSlotLabel(date, time) {
+  const [y, m, d] = date.split('-').map(Number), [hh, mm] = time.split(':').map(Number);
+  const day = new Date(y, m - 1, d).toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric', year: 'numeric' });
+  return `${day} at ${((hh + 11) % 12) + 1}:${String(mm).padStart(2, '0')} ${hh < 12 ? 'AM' : 'PM'}`;
+}
+// Rows that have both a date and a time, in order. With strict, also reports gaps and past dates.
+function avCollectSlots(strict) {
+  const rows = [...document.querySelectorAll('#av-slot-rows .av-slot-row')];
+  const out = []; let gap = false, past = false;
+  const today = new Date(); const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+  rows.forEach((row, i) => {
+    const [d, t] = row.querySelectorAll('input');
+    if (d.value && t.value) { if (out.length !== i) gap = true; if (d.value < todayStr) past = true; out.push({ key: AV_LETTERS[i], label: avSlotLabel(d.value, t.value) }); }
+    else if (d.value || t.value) gap = true;
+  });
+  return strict ? { slots: out, gap, past } : out;
+}
+
 function avBuildMessage() {
   const r = reqMap[avReqId];
   if (!r) return;
   const firstName = r.patient_name.split(' ')[0];
   const pname     = document.getElementById('s-display-name')?.value || document.getElementById('s-pname')?.value || 'our practice';
-  const slots     = document.getElementById('av-slots').value.trim();
-  const slotBlock = slots ? slots : '[Enter available slots above]';
+  const slots     = avCollectSlots(false);
+  const slotBlock = slots.length ? slots.map(x => `${x.key}) ${x.label}`).join('\n') : '[Enter the available times above]';
   const physician = r.preferred_physician_name ? ` with ${r.preferred_physician_name}` : '';
+  const letters   = slots.length > 1 ? slots.slice(0, -1).map(x => x.key).join(', ') + ' or ' + slots[slots.length - 1].key : (slots[0] ? slots[0].key : 'the letter');
 
   let msg;
   if (avChannel === 'sms') {
-    msg = `Hi ${firstName}, thank you for your appointment request at ${pname}. We have the following available slots${physician}:\n\n${slotBlock}\n\nPlease call us or reply to confirm your preferred time. We look forward to seeing you!\n\n– ${pname} Team`;
+    msg = `Hi ${firstName}, thank you for your appointment request at ${pname}. We have these times available${physician}:\n\n${slotBlock}\n\nReply ${letters} to choose one, or call our office if none of these work.\n\n– ${pname} Team`;
   } else {
-    msg = `Hi ${firstName},\n\nThank you for submitting your appointment request at ${pname}. We're happy to help!\n\nWe have the following available slots${physician}:\n\n${slotBlock}\n\nPlease call our office or reply to this email to confirm your preferred time.\n\nWarm regards,\nThe ${pname} Team`;
+    msg = `Hi ${firstName},\n\nThank you for submitting your appointment request at ${pname}. We're happy to help!\n\nWe have these times available${physician}:\n\n${slotBlock}\n\nUse the links below to choose a time, or reply to this email if none of these work.\n\n– ${pname} Team`;
   }
   document.getElementById('av-msg').value = msg;
 }
@@ -3528,21 +3581,22 @@ async function sendAvailability() {
 
   errEl.style.display = 'none';
   if (!message) { errEl.textContent = 'Message cannot be empty.'; errEl.style.display = 'block'; return; }
-  if (!document.getElementById('av-slots').value.trim()) {
-    errEl.textContent = 'Please enter at least one available slot before sending.';
-    errEl.style.display = 'block'; return;
-  }
+  const picked = avCollectSlots(true);
+  if (!picked.slots.length) { errEl.textContent = 'Please enter at least one time (date and time) before sending.'; errEl.style.display = 'block'; return; }
+  if (picked.gap) { errEl.textContent = 'Fill the times in order (A, then B, then C) and give each a date and a time.'; errEl.style.display = 'block'; return; }
+  if (picked.past) { errEl.textContent = 'One of the dates is in the past.'; errEl.style.display = 'block'; return; }
+  if (new Set(picked.slots.map(x => x.label)).size !== picked.slots.length) { errEl.textContent = 'Two of the times are the same.'; errEl.style.display = 'block'; return; }
 
   btn.disabled = true;
   btn.textContent = 'Sending…';
   try {
     const result = await api('POST', `/api/requests/${avReqId}/send-availability`, {
-      channel: avChannel, message,
+      channel: avChannel, message, slots: picked.slots,
       ...(avChannel === 'email' ? { subject } : {}),
     });
     closeAvModal();
     const demoNote = result.demo ? ' (simulated — credentials not yet configured)' : '';
-    toast('ok', '📤', `Available slots sent via ${avChannel.toUpperCase()}${demoNote} — request marked as Contacted.`);
+    toast('ok', '📤', `Times sent by ${avChannel === 'sms' ? 'text' : 'email'}${demoNote}. The patient's answer will appear here.`);
     loadRequests();
   } catch (e) {
     errEl.textContent = e.message;

@@ -31,6 +31,10 @@
   .consent input[type=checkbox]{width:16px;height:16px;margin-top:2px;flex-shrink:0;accent-color:#9A6B1F;}
   .consent p{font-size:12px;color:#4A5572;line-height:1.5;}
   .consent a{color:#9A6B1F;}
+  .pref{display:flex;gap:10px;flex-wrap:wrap;}
+  .pref-opt{display:flex;align-items:center;gap:8px;flex:1;min-width:120px;margin:0;padding:10px 14px;border:1px solid #DDE3F0;border-radius:8px;background:#fff;font-size:14px;font-weight:500;color:#1B2136;text-transform:none;letter-spacing:0;cursor:pointer;}
+  .pref-opt input{width:16px;height:16px;padding:0;margin:0;flex-shrink:0;accent-color:#9A6B1F;}
+  .pref-opt:has(input:checked){border-color:#9A6B1F;background:#FBF6EC;}
   .btn{width:100%;background:#9A6B1F;color:#fff;border:none;border-radius:10px;padding:13px;font-size:15px;font-weight:600;cursor:pointer;transition:background .15s;}
   .btn:hover{background:#C8922A;}
   .btn:disabled{opacity:.6;cursor:not-allowed;}
@@ -98,6 +102,15 @@
       </div>
     </div>
 
+    <div class="field">
+      <label>How should we contact you about this request? <span class="required">*</span></label>
+      <div class="pref" role="radiogroup" aria-label="Preferred way to be contacted">
+        <label class="pref-opt"><input type="radio" name="f-pref" value="phone"> Phone call</label>
+        <label class="pref-opt"><input type="radio" name="f-pref" value="text"> Text message</label>
+        <label class="pref-opt"><input type="radio" name="f-pref" value="email"> Email</label>
+      </div>
+    </div>
+
     <!-- APPOINTMENT PREFERENCES -->
     <div class="section-title">Appointment Preferences</div>
 
@@ -150,7 +163,7 @@
     <!-- CONSENT -->
     <div class="consent">
       <input type="checkbox" id="f-consent">
-      <p>I agree to receive text messages from <strong>PracticePing</strong> at my mobile number about my appointment request with <strong class="consent-practice">this practice</strong>. Messages may include appointment confirmations, follow-up requests, and scheduling reminders. Message frequency varies (up to 5/month). Msg &amp; data rates may apply. Reply STOP to opt out. Reply HELP for help. Consent is not required to request an appointment. SMS is not a fully secure channel and should not be used for sensitive health details. See the <a href="https://www.practiceping.com/terms.html" target="_blank" rel="noopener">Terms</a> and <a href="https://www.practiceping.com/privacy.html" target="_blank" rel="noopener">Privacy Policy</a>.</p>
+      <p>I agree that <strong>PracticePing</strong>, on behalf of <strong class="consent-practice">this practice</strong>, may contact me by text message and email about my appointment request, including available appointment times. Message frequency varies (up to 5 texts per month). Msg &amp; data rates may apply. Reply STOP to opt out of texts. Reply HELP for help. This is required if you choose text or email above, and optional if you prefer a phone call. Text and email are not fully secure and should not be used for sensitive health details. See the <a href="https://www.practiceping.com/terms.html" target="_blank" rel="noopener">Terms</a> and <a href="https://www.practiceping.com/privacy.html" target="_blank" rel="noopener">Privacy Policy</a>.</p>
     </div>
 
     <button class="btn" id="f-btn" onclick="submitRequest()">Submit Request</button>
@@ -242,6 +255,9 @@
     const reason   = document.getElementById('f-reason').value.trim();
     const insPrim  = document.getElementById('f-ins-primary').value.trim();
     const insId    = document.getElementById('f-ins-id').value.trim();
+    const prefEl   = document.querySelector('input[name="f-pref"]:checked');
+    const pref     = prefEl ? prefEl.value : '';
+    const agreed   = document.getElementById('f-consent').checked;
 
     // Validate required fields
     const missing = [];
@@ -250,6 +266,7 @@
     if (!address) missing.push('Address');
     if (!phone)   missing.push('Phone Number');
     if (!email)   missing.push('Email Address');
+    if (!pref)    missing.push('How we should contact you');
     if (!phys)    missing.push('Physician');
     if (!date)    missing.push('Appointment Date');
     if (!reason)  missing.push('Reason for Appointment');
@@ -258,6 +275,11 @@
 
     if (missing.length) {
       showErr(`Please fill in: ${missing.join(', ')}`);
+      return;
+    }
+
+    if ((pref === 'text' || pref === 'email') && !agreed) {
+      showErr('To be contacted by text or email, please tick the consent box below, or choose Phone call.');
       return;
     }
 
@@ -284,7 +306,9 @@
           insurancePrimary:  insPrim,
           insuranceId:       insId,
           insuranceGroup:    document.getElementById('f-ins-group').value.trim() || null,
-          smsConsent:        document.getElementById('f-consent').checked,
+          preferredContact:  pref,
+          commConsent:       agreed,
+          smsConsent:        agreed,
         }),
       });
 
