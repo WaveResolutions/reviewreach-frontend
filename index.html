@@ -3253,9 +3253,15 @@ function copyImportEmail() {
 let ehrState = { athenaConfigured: false, integration: null };
 let ehrPanelOpen = false;
 
+// Lapsed patients and no-show recovery read live from athenahealth, so they only appear for practices connected to it.
+function applyDataSourceTabs() {
+  const hide = currentDataSource === 'imported';
+  document.querySelectorAll('.tn-desktop[onclick*="\'lapsed\'"], .tn-desktop[onclick*="\'noshow\'"], #mm-lapsed, #mm-noshow').forEach(el => { el.style.display = hide ? 'none' : ''; });
+}
 async function setDataSource(newSource) {
   await api('PUT', '/api/import/datasource', { dataSource: newSource });
   currentDataSource = newSource;
+  applyDataSourceTabs();
   updateImportModeUI(newSource);
   loadSchedule();
 }
@@ -3347,6 +3353,7 @@ async function loadImportHistory() {
 
     renderEmailImport(data);
     currentDataSource = data.dataSource || 'athena';
+    applyDataSourceTabs();
     ehrState = { athenaConfigured: !!data.athenaConfigured, integration: data.integration || null };
     const vsel = document.getElementById('ehr-vendor');
     if (vsel && !vsel.value) vsel.value = ehrState.athenaConfigured ? 'athenahealth' : (data.integration ? data.integration.vendor : '');
